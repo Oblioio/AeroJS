@@ -8,5 +8,5 @@ module.exports = {
         src: require('../manifests/aero'),
         dest: '<%= compile_dir %>/aero.js'
     }
-
+    
 };

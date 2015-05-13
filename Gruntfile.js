@@ -5,8 +5,7 @@ module.exports = function (grunt) {
     loadConfig(grunt, {
         configPath: __dirname + '/tasks/options',
         config: {
-            release_dir: 'build',
-            compile_dir: 'dist',
+            compile_dir: 'build',
             banner: require('fs').readFileSync(__dirname + '/tasks/banner.txt', 'utf8')
         }
     });
@@ -15,8 +14,6 @@ module.exports = function (grunt) {
 
     grunt.registerTask('default', ['build']);
 
-    grunt.registerTask('build', ['clean', 'jshint', 'concat', 'uglify']);
-
-    grunt.registerTask('dist', ['build', 'copy']);
+    grunt.registerTask('build', ['clean', 'concat', 'uglify']);
 
 };
