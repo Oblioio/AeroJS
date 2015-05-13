@@ -1,2 +1,2 @@
-# ArrowJS
+# AeroJS
 WebGL framework
