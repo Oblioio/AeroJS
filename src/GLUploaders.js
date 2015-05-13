@@ -1,6 +1,4 @@
-;define([
-    'jquery'
-], function ($) {
+(function(window) {
 
     'use strict';
 
@@ -57,4 +55,4 @@
     FLOCK.app.GLUploaders = new GLUploaders();
 
 
-});
+}(window));

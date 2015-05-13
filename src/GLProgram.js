@@ -1,8 +1,4 @@
-;define([
-    'jquery',
-    'FLOCK/app/GLUploaders',
-    'FLOCK/utils/ArrayExecuter'
-], function ($) {
+(function(window) {
 
     'use strict';
 
@@ -238,4 +234,4 @@ UTILITY FUNCTIONS
         }
     }
 
-});
+}(window));

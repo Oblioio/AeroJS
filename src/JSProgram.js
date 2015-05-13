@@ -1,7 +1,4 @@
-;define([
-    'jquery',
-    'FLOCK/utils/ArrayExecuter'
-], function ($) {
+(function(window) {
 
     'use strict';
 
@@ -74,5 +71,5 @@ UTILITY FUNCTIONS
         }
         return obj;
     }
-    
-});
+   
+}(window));

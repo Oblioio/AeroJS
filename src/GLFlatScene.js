@@ -1,12 +1,7 @@
-;define([
-    'jquery',
-    'FLOCK/app/GLProgram',
-    'FLOCK/app/GLTexture',
-    'FLOCK/utils/ArrayExecuter'
-], function ($) {
+(function(window) {
 
     'use strict';
-
+    
     var arrayExecuter = FLOCK.utils.ArrayExecuter;
 
     var GLFlatScene = function (settingsJSON, parameters) {
@@ -782,4 +777,4 @@ UTILITY FUNCTIONS
         }
     }
 
-});
+}(window));
