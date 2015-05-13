@@ -1,0 +1,16 @@
+/**
+* @author       Jonathan Hooker <jonathan@oblio.io>
+* @copyright    2015 Oblio
+* @license      MIT License
+*
+* @overview
+*
+* AeroJS - http://Oblio.io
+*
+* By Jonathan Hooker http://www.oblio.io @Oblioio
+*
+* Aero is an attempt to build a node based webGL framework with a focus 
+* on quick experimentation.
+*
+*/
+
