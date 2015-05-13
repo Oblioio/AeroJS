@@ -1,0 +1,8 @@
+[
+    "GLFlatScene.js",
+    "src/GLProgram.js",
+    "src/GLTexture.js",
+    "src/GLUploaders.js",
+    "src/JSProgram.js",
+    "src/utils/ArrayExecuter.js"
+]
