@@ -1,8 +1,10 @@
 [
+    "src/Aero.js",
+    "src/utils/ArrayExecuter.js",
+    "src/utils/XHRLoader.js",
     "src/GLProgram.js",
     "src/GLTexture.js",
     "src/GLUploaders.js",
     "src/JSProgram.js",
-    "src/utils/ArrayExecuter.js",
     "src/GLFlatScene.js"
 ]

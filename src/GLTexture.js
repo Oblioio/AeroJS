@@ -2,12 +2,11 @@
 
     'use strict';
 
-    var arrayExecuter = FLOCK.utils.ArrayExecuter;
     
     var GLTexture = function (_settings, _scene) {
         var gl = _scene.gl,
             texture = gl.createTexture();
-            
+        
         // console.log('GLTexture');
         this.type = "texture";
         this.inRenderList = false;
@@ -71,14 +70,12 @@
             this.onLoadComplete();
             this.onLoadComplete = null;
         }
-        // arrayExecuter.stepComplete();
     }
         
     GLTexture.prototype.loadTexture = loadTexture;
     
-    // add section to FLOCK namespace
-    FLOCK.app = FLOCK.app || {};
-    FLOCK.app.GLTexture = GLTexture;
+    // add section to Aero namespace
+    Aero.GLTexture = GLTexture;
     
     
     

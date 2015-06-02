@@ -1,8 +1,6 @@
 (function(window) {
 
     'use strict';
-
-    var arrayExecuter = FLOCK.utils.ArrayExecuter;
     
     var JSProgram = function (_settings, _scene) {
         // console.log('JSProgram');
@@ -29,22 +27,21 @@
     
     function init(){
         
-        var function_arr =  [
+        // var function_arr =  [
                 // { fn: bind(loadJSON, this), vars: settingsJSON },
                 // { fn: bind(loadTextures, this), vars: null },
                 // { fn: bind(createProgram, this), vars: null },
                 // { fn: bind(setupUniforms, this), vars: null }
-            ];
+            // ];
         
-        arrayExecuter.execute(function_arr);
+        // arrayExecuter.execute(function_arr);
         
     }
     
     JSProgram.prototype.init = init;
     
-    // add section to FLOCK namespace
-    FLOCK.app = FLOCK.app || {};
-    FLOCK.app.JSProgram = JSProgram;
+    // add section to Aero namespace
+    Aero.JSProgram = JSProgram;
     
     
 /* //////////////////////////////////////////////////////////////////////////////////////////////////////////////

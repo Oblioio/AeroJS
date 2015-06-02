@@ -1,12 +1,14 @@
+
+
 (function(window) {
 
     'use strict';
 
-    var arrayExecuter = FLOCK.utils.ArrayExecuter;
-
     var GLProgram = function (_settings, _scene) {
         // console.log('GLProgram');
-
+        
+        this.arrayExecuter = new Aero.utils.ArrayExecuter(this);
+        
         this.type = "GLProgram";
         this.inRenderList = false;
 
@@ -28,7 +30,7 @@
         }
     }
 
-    function init(){
+    function init(callBackFn){
 
         var function_arr =  [
                 // { fn: bind(loadJSON, this), vars: settingsJSON },
@@ -36,24 +38,22 @@
                 { fn: bind(loadShader, this), vars: 'fShader' },
                 // { fn: bind(loadTextures, this), vars: null },
                 { fn: bind(createProgram, this), vars: null },
-                { fn: bind(setupUniforms, this), vars: null }
+                { fn: bind(setupUniforms, this), vars: null },
+                { fn: callBackFn, vars: null }
             ];
 
-        arrayExecuter.execute(function_arr);
+        this.arrayExecuter.execute(function_arr);
 
     }
 
     function loadShader(type){
         console.log('loadShader: '+this[type].path);
-
-        $.ajax({
-            dataType: "text",
-            url: this[type].path,
-            success: bind(function (data){
+        
+        Aero.utils.XHRLoader(this[type].path, bind(function (data){
                 this[type].text = data;
-                arrayExecuter.stepComplete();
-            }, this)
-        });
+                this.arrayExecuter.stepComplete();
+            }, this) );
+        
     }
 
     function createProgram(){
@@ -85,7 +85,7 @@
         this.program = program;
         gl.program = program;
 
-        arrayExecuter.stepComplete();
+        this.arrayExecuter.stepComplete();
     }
 
     function setupUniforms(){
@@ -110,47 +110,47 @@
             switch(uniObj.type){
                 case "f":
                 case "1f":
-                    u_fn = FLOCK.app.GLUploaders.uniform1f;
+                    u_fn = Aero.GLUploaders.uniform1f;
                     break;
                 // case "1fv":
-                //     u_fn = FLOCK.app.GLUploaders.uniform1fv;
+                //     u_fn = Aero.GLUploaders.uniform1fv;
                 //     break;
                 // case "1i":
-                //     u_fn = FLOCK.app.GLUploaders.uniform1i;
+                //     u_fn = Aero.GLUploaders.uniform1i;
                 //     break;
                 // case "1iv":
-                //     u_fn = FLOCK.app.GLUploaders.uniform1iv;
+                //     u_fn = Aero.GLUploaders.uniform1iv;
                 //     break;
 
                 case "2f":
-                    u_fn = FLOCK.app.GLUploaders.uniform2f;
+                    u_fn = Aero.GLUploaders.uniform2f;
                     break;
                 // case "2fv":
-                //     u_fn = FLOCK.app.GLUploaders.uniform2fv;
+                //     u_fn = Aero.GLUploaders.uniform2fv;
                 //     break;
                 // case "2i":
-                //     u_fn = FLOCK.app.GLUploaders.uniform2i;
+                //     u_fn = Aero.GLUploaders.uniform2i;
                 //     break;
                 // case "2iv":
-                //     u_fn = FLOCK.app.GLUploaders.uniform2iv;
+                //     u_fn = Aero.GLUploaders.uniform2iv;
                 //     break;
 
                 case "3f":
-                    u_fn = FLOCK.app.GLUploaders.uniform3f;
+                    u_fn = Aero.GLUploaders.uniform3f;
                     break;
                 case "3m":
-                    u_fn = FLOCK.app.GLUploaders.uniformMatrix3fv;
+                    u_fn = Aero.GLUploaders.uniformMatrix3fv;
                     break;
                     
                 case "4f":
-                    u_fn = FLOCK.app.GLUploaders.uniform4f;
+                    u_fn = Aero.GLUploaders.uniform4f;
                     break;
                 case "4m":
-                    u_fn = FLOCK.app.GLUploaders.uniformMatrix4fv;
+                    u_fn = Aero.GLUploaders.uniformMatrix4fv;
                     break;
                     
                 case "t":
-                    u_fn = FLOCK.app.GLUploaders.uniform1i;
+                    u_fn = Aero.GLUploaders.uniform1i;
                     break;
 
                 default:
@@ -178,7 +178,7 @@
             // this.uniformsList.push(u);
         }
 
-        arrayExecuter.stepComplete();
+        this.arrayExecuter.stepComplete();
     }
 
     function updateUniforms(){
@@ -208,9 +208,8 @@
     GLProgram.prototype.updateUniforms = updateUniforms;
     GLProgram.prototype.render = render;
 
-    // add section to FLOCK namespace
-    FLOCK.app = FLOCK.app || {};
-    FLOCK.app.GLProgram = GLProgram;
+    // add section to Aero namespace
+    Aero.GLProgram = GLProgram;
 
 
 

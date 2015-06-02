@@ -1,15 +1,16 @@
 (function(window) {
 
     'use strict';
-    
-    var arrayExecuter = FLOCK.utils.ArrayExecuter;
 
     var GLFlatScene = function (settingsJSON, parameters) {
         console.log('GLFlatScene');
-
+        
+        this.arrayExecuter = new Aero.utils.ArrayExecuter(this);
+        this.stepComplete = bind(this.arrayExecuter.stepComplete, this.arrayExecuter);
+        
         this.dirPath = (settingsJSON.indexOf("/") >= 0)?settingsJSON.substring(0, settingsJSON.lastIndexOf("/")+1):"";
 
-        if(parameters.canvas){
+        if(parameters && parameters.canvas){
             this.canvas = parameters.canvas;
         } else {
             this.canvas = document.createElement('canvas');
@@ -27,18 +28,19 @@
                 { fn: bind(drawNodes, this), vars: null }
             ];
 
-        arrayExecuter.execute(function_arr);
+        this.arrayExecuter.execute(function_arr);
     }
 
     function loadJSON(url){
         console.log('loadJSON');
-        $.getJSON(url, bind(JSONLoaded, this));
+        
+        Aero.utils.XHRLoader(url, bind(JSONLoaded, this));
     }
 
     function JSONLoaded(data){
         console.log('JSONLoaded');
         var currObj;
-
+        data = JSON.parse(data);
         this.data = data;
 
         //size the canvas
@@ -59,7 +61,7 @@
         this.maxTextureUnits = this.gl.getParameter(this.gl.MAX_TEXTURE_IMAGE_UNITS);
         this.nextTexUnit = 0;
 
-        arrayExecuter.stepComplete();
+        this.arrayExecuter.stepComplete();
     }
 
     function nodeIsTaken(id){
@@ -93,14 +95,14 @@
             this.nodes[t] = texObj;
             texObj.id = t;
 
-            function_arr.push({ fn: bind(texObj.loadTexture, texObj), vars: [bind(arrayExecuter.stepComplete, arrayExecuter)] });
+            function_arr.push({ fn: bind(texObj.loadTexture, texObj), vars: [this.stepComplete] });
         }
 
-        arrayExecuter.execute(function_arr);
+        this.arrayExecuter.execute(function_arr);
     }
 
     function createTexture(textureData){
-        return new FLOCK.app.GLTexture({
+        return new Aero.GLTexture({
             imgURL: textureData,
             texUnit: this.getNextTexUnit()
         }, this);
@@ -125,7 +127,7 @@
             }
 
             // if JSProgram does not exist, attach the script
-            if (!FLOCK.app.JSPrograms[programData[p].id]){
+            if (!Aero.JSPrograms[programData[p].id]){
                 var jsPath = programData[p].js.replace('~/', this.dirPath);
 
                 var tag = document.createElement('script');
@@ -146,21 +148,21 @@
                             exists = true;
                     if(!exists){
                         dependencies.push(programData[p].dependencies[s]);
-                        function_arr.push({ fn: add_script, vars: [programData[p].dependencies[s], bind(arrayExecuter.stepComplete, arrayExecuter)] });
+                        function_arr.push({ fn: add_script, vars: [programData[p].dependencies[s], this.stepComplete] });
                     }
                 }
             }
 
             this.JSPrograms[p] = {data: programData[p], obj:false};
 
-            // var progObj = new FLOCK.app.JSProgram(programData[p], this);
+            // var progObj = new Aero.JSProgram(programData[p], this);
             // this.JSPrograms[p] = progObj;
             // this.nodes[p] = progObj;
             // progObj.id = p;
             function_arr.push({ fn: this.createNextJSProgram, vars: String(''+p) });
         }
 
-        arrayExecuter.execute(function_arr);
+        this.arrayExecuter.execute(function_arr);
     }
 
     // pulled from https://software.intel.com/en-us/blogs/2010/05/22/dynamically-load-javascript-with-load-completion-notification
@@ -195,23 +197,23 @@
     function createNextJSProgram(id){
         console.log('createNextJSProgram: '+id);
 
-        if (!FLOCK.app.JSPrograms[this.JSPrograms[id].data.id]){
+        if (!Aero.JSPrograms[this.JSPrograms[id].data.id]){
             // the JS Program has not been attached yet
             window.requestAnimationFrame(bind(function(){
                 this.createNextJSProgram(id);
             }, this));
             return
         } else {
-            var progObj = new FLOCK.app.JSPrograms[this.JSPrograms[id].data.id](this.JSPrograms[id].data, this);
+            var progObj = new Aero.JSPrograms[this.JSPrograms[id].data.id](this.JSPrograms[id].data, this);
             this.JSPrograms[id] = progObj;
             this.nodes[id] = progObj;
             progObj.id = id;
             progObj.type = "JSProgram";
             progObj.dependents = []; //this will contain nodes that rely on this node to run first
             if(progObj.init){
-                progObj.init(bind(arrayExecuter.stepComplete, arrayExecuter));
+                progObj.init(this.stepComplete);
             } else {
-                arrayExecuter.stepComplete();
+                this.arrayExecuter.stepComplete();
             }
             if(!progObj.run)progObj.run = function(){};
         }
@@ -230,15 +232,15 @@
                 nodeIsTaken(p);
                 return;
             }
-            var progObj = new FLOCK.app.GLProgram(programData[p], this);
+            var progObj = new Aero.GLProgram(programData[p], this);
             this.GLPrograms[p] = progObj;
             this.nodes[p] = progObj;
             progObj.id = p;
             progObj.dependents = []; //this will contain nodes that rely on this node to run first
-            function_arr.push({ fn: bind(progObj.init, progObj), vars: null });
+            function_arr.push({ fn: bind(progObj.init, progObj), vars: [this.stepComplete] });
         }
 
-        arrayExecuter.execute(function_arr);
+        this.arrayExecuter.execute(function_arr);
     }
 
     function createRenderList(){
@@ -371,7 +373,7 @@
         }
         console.log(renderOrderStr);
 
-        arrayExecuter.stepComplete();
+        this.arrayExecuter.stepComplete();
     }
 
     function connectionSearch(connections, dir, id){
@@ -484,7 +486,7 @@
             currNode.outputBuffer = currBuffer.index;
         }
 
-        arrayExecuter.stepComplete();
+        this.arrayExecuter.stepComplete();
     }
 
     function getNextFrameBuffer(r){
@@ -594,7 +596,7 @@
 
         this.usingStandardVertexBuffer = false;
 
-        arrayExecuter.stepComplete();
+        this.arrayExecuter.stepComplete();
     }
 
     function useStandardVertexBuffer(){
@@ -751,13 +753,9 @@
 
 
 
-    // add section to FLOCK namespace
-    FLOCK = FLOCK || {};
-    FLOCK.app = FLOCK.app || {};
-    FLOCK.app.GLFlatScene = GLFlatScene;
-    FLOCK.app.JSPrograms = FLOCK.app.JSPrograms || {};
-
-    window.GLFlatScene = GLFlatScene;
+    // add section to Aero namespace
+    Aero.GLFlatScene = GLFlatScene;
+    Aero.JSPrograms = Aero.JSPrograms || {};
 
 /* //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -767,7 +765,7 @@ UTILITY FUNCTIONS
 
     GLFlatScene.registerJSProgram = function(id, obj){
         console.log('GLFlatScene.registerJSProgram: '+id);
-        var currPrograms = FLOCK.app.JSPrograms;
+        var currPrograms = Aero.JSPrograms;
         currPrograms[id] = obj;
     }
 

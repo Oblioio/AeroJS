@@ -50,9 +50,8 @@
         gl.uniformMatrix4fv(u_loc, gl.FALSE, u_val);
     }
 
-    // add section to FLOCK namespace
-    FLOCK.app = FLOCK.app || {};
-    FLOCK.app.GLUploaders = new GLUploaders();
+    // add section to Aero namespace
+    Aero.GLUploaders = new GLUploaders();
 
 
 }(window));
