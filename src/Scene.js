@@ -2,8 +2,8 @@
 
     'use strict';
 
-    var GLFlatScene = function (settingsJSON, parameters) {
-        console.log('GLFlatScene');
+    var Scene = function (settingsJSON, parameters) {
+        console.log('Scene');
         
         this.arrayExecuter = new Aero.utils.ArrayExecuter(this);
         this.stepComplete = bind(this.arrayExecuter.stepComplete, this.arrayExecuter);
@@ -155,10 +155,6 @@
 
             this.JSPrograms[p] = {data: programData[p], obj:false};
 
-            // var progObj = new Aero.JSProgram(programData[p], this);
-            // this.JSPrograms[p] = progObj;
-            // this.nodes[p] = progObj;
-            // progObj.id = p;
             function_arr.push({ fn: this.createNextJSProgram, vars: String(''+p) });
         }
 
@@ -308,7 +304,10 @@
                     connectedNode.inputs[sourceConnections[s]['dest']['var']] = currNode.texUnit;
                 }
                 if(currNode.type == "GLProgram"){
-                    currNode.dependents.push({id: connectedNode.id, var: sourceConnections[s]['dest']['var']});
+                    currNode.dependents.push({
+                        id: connectedNode.id, 
+                        destVar: sourceConnections[s]['dest']['var']
+                    });
                 }
                 if(currNode.type == "JSProgram"){
                     console.log('add output to JSProgram');
@@ -470,15 +469,21 @@
             } else {
                 currBuffer = getNextFrameBuffer.call(this, r);
             }
-
-            console.log(currNode.id+' frame buffer: '+currBuffer.index);
+            
+            currNode.outputs = currNode.outputs || {};
+            currNode.outputs.texUnit = currBuffer.texUnit;
+            
+            // console.log(currNode.id+' draws to frame buffer: '+currBuffer.texUnit);
 
             for(o=0; o<currNode.dependents.length; o++){
                 // getRenderListIndex(this.renderList, connectedNode);
                 // connectedNode = this.GLPrograms[currNode.dependents[o].id];
                 connectedNode = this.nodes[currNode.dependents[o].id];
+                
                 // if(connectedNode.type == "GLProgram")connectedNode.setUniform(currNode.dependents[o].var, currBuffer.texUnit); //set the texture unit index
-                if(connectedNode.type == "GLProgram")connectedNode.inputs[currNode.dependents[o].var] = currBuffer.texUnit; //set the texture unit index
+                if(connectedNode.type == "GLProgram")
+                    connectedNode.inputs[currNode.dependents[o].destVar] = currBuffer.texUnit; //set the texture unit index
+                    
                 connectedIndex = getRenderListIndex(this.renderList, connectedNode);
                 currBuffer.holdIndex = Math.max(connectedIndex, currBuffer.holdIndex);
             }
@@ -696,6 +701,7 @@
                 case "GLProgram":
                     // console.log('program: '+nodeObj.id);
                     if(nodeObj.drawToCanvas){
+                        // console.log(nodeObj.id+' draw to canvas!');
                         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                     } else {
                         // console.log('bind buffer: '+nodeObj.outputBuffer);
@@ -714,7 +720,7 @@
 
 
                     //update uniforms
-                    // nodeObj.updateUniforms();
+                    nodeObj.updateUniforms();
 
                     //draw
                     // gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the rectangle
@@ -722,16 +728,25 @@
                     nodeObj.render();
 
                     break;
-                case "JSProgram":
-                    if(nodeObj.draws && !nodeObj.drawToCanvas){
-                        gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffers[nodeObj.outputBuffer].frameBuffer);
+                case "JSProgram":;
+                    if(nodeObj.draws){
+                        if(!nodeObj.drawToCanvas){
+                            gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffers[nodeObj.outputBuffer].frameBuffer);
+                            // if(nodeObj.clearBuffer)
+                                gl.clear(gl.COLOR_BUFFER_BIT);
+                        } else {
+                            // console.log(nodeObj.id+' draw to canvas!');
+                            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                        }
                     }
                     // run program
                     nodeObj.run();
 
                     // update dependents
                     d = nodeObj.dependents.length;
+                    // if(d>0)console.log('update dependents');
                     while(d--){
+                        // if(nodeObj.dependents[d].id="passthrough3")console.log(nodeObj.outputs[nodeObj.dependents[d].sourceVar]);
                         nodeObj.dependents[d].obj.inputs[nodeObj.dependents[d].destVar] = nodeObj.outputs[nodeObj.dependents[d].sourceVar];
                     }
 
@@ -744,18 +759,17 @@
         window.requestAnimationFrame(bind(drawNodes, this));
     }
 
-    GLFlatScene.prototype.draw = drawNodes;
-    GLFlatScene.prototype.getNextTexUnit = getNextTexUnit;
-    GLFlatScene.prototype.useStandardVertexBuffer = useStandardVertexBuffer;
-    GLFlatScene.prototype.useCustomVertexBuffer = useCustomVertexBuffer;
-    GLFlatScene.prototype.createCustomVertexBuffer = createCustomVertexBuffer;
-    GLFlatScene.prototype.updateCustomVertexBuffer = updateCustomVertexBuffer;
+    Scene.prototype.draw = drawNodes;
+    Scene.prototype.getNextTexUnit = getNextTexUnit;
+    Scene.prototype.useStandardVertexBuffer = useStandardVertexBuffer;
+    Scene.prototype.useCustomVertexBuffer = useCustomVertexBuffer;
+    Scene.prototype.createCustomVertexBuffer = createCustomVertexBuffer;
+    Scene.prototype.updateCustomVertexBuffer = updateCustomVertexBuffer;
 
 
 
     // add section to Aero namespace
-    Aero.GLFlatScene = GLFlatScene;
-    Aero.JSPrograms = Aero.JSPrograms || {};
+    Aero.Scene = Scene;
 
 /* //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -763,11 +777,6 @@ UTILITY FUNCTIONS
 
 */ //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    GLFlatScene.registerJSProgram = function(id, obj){
-        console.log('GLFlatScene.registerJSProgram: '+id);
-        var currPrograms = Aero.JSPrograms;
-        currPrograms[id] = obj;
-    }
 
     function bind(fn, scope){
         return function() {

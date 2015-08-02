@@ -186,9 +186,12 @@
         var gl = this.gl,
             u = this.uniforms.length,
             uObj;
-
+        
+        
         while(u--){
             uObj = this.uniforms[u];
+            
+            // if(this.id == 'height' && u == 1)console.log('updateUniforms! '+uObj.loc);
             if(uObj.fn)uObj.fn(gl, uObj.loc, this.inputs[uObj.id]);
         }
     }

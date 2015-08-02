@@ -6,5 +6,5 @@
     "src/GLTexture.js",
     "src/GLUploaders.js",
     "src/JSProgram.js",
-    "src/GLFlatScene.js"
+    "src/Scene.js"
 ]
