@@ -706,7 +706,8 @@
                     } else {
                         // console.log('bind buffer: '+nodeObj.outputBuffer);
                         gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffers[nodeObj.outputBuffer].frameBuffer);
-                        if(nodeObj.clearBuffer)gl.clear(gl.COLOR_BUFFER_BIT);
+                        if(nodeObj.clearBuffer)
+                            gl.clear(gl.COLOR_BUFFER_BIT);
                     }
 
                     //attach program
@@ -732,7 +733,7 @@
                     if(nodeObj.draws){
                         if(!nodeObj.drawToCanvas){
                             gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffers[nodeObj.outputBuffer].frameBuffer);
-                            // if(nodeObj.clearBuffer)
+                            if(nodeObj.clearBuffer)
                                 gl.clear(gl.COLOR_BUFFER_BIT);
                         } else {
                             // console.log(nodeObj.id+' draw to canvas!');
