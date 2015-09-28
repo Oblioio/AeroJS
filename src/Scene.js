@@ -126,17 +126,6 @@
                 return;
             }
 
-            // if JSProgram does not exist, attach the script
-            if (!Aero.JSPrograms[programData[p].id]){
-                var jsPath = programData[p].js.replace('~/', this.dirPath);
-
-                var tag = document.createElement('script');
-                tag.type = 'text/javascript';
-                tag.src = jsPath;
-                var s = document.getElementsByTagName('script')[0];
-                s.parentNode.insertBefore(tag, s);
-            }
-
             // check dependencies
             var s, d, exists;
             if(programData[p].dependencies && programData[p].dependencies.length){
@@ -195,9 +184,10 @@
 
         if (!Aero.JSPrograms[this.JSPrograms[id].data.id]){
             // the JS Program has not been attached yet
-            window.requestAnimationFrame(bind(function(){
-                this.createNextJSProgram(id);
-            }, this));
+            // window.requestAnimationFrame(bind(function(){
+            //     this.createNextJSProgram(id);
+            // }, this));
+            console.log('There is no registered JSProgram with the id: '+this.JSPrograms[id].data.id);
             return
         } else {
             var progObj = new Aero.JSPrograms[this.JSPrograms[id].data.id](this.JSPrograms[id].data, this);
