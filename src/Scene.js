@@ -8,8 +8,6 @@
         this.arrayExecuter = new Aero.utils.ArrayExecuter(this);
         this.stepComplete = bind(this.arrayExecuter.stepComplete, this.arrayExecuter);
         
-        this.dirPath = (settingsJSON.indexOf("/") >= 0)?settingsJSON.substring(0, settingsJSON.lastIndexOf("/")+1):"";
-
         if(parameters && parameters.canvas){
             this.canvas = parameters.canvas;
         } else {
@@ -18,15 +16,23 @@
         this.nodes = {};
 
         var function_arr =  [
-                { fn: bind(loadJSON, this), vars: settingsJSON },
-                { fn: bind(createTextures, this), vars: null },
-                { fn: bind(createJSPrograms, this), vars: null },
-                { fn: bind(createGLPrograms, this), vars: null },
-                { fn: bind(createRenderList, this), vars: null },
-                { fn: bind(createFrameBuffers, this), vars: null },
-                { fn: bind(initVertexBuffers, this), vars: null },
-                { fn: bind(drawNodes, this), vars: null }
+                { fn: processJSON, vars: settingsJSON },
+                { fn: createTextures, vars: null },
+                { fn: createJSPrograms, vars: null },
+                { fn: createGLPrograms, vars: null },
+                { fn: createRenderList, vars: null },
+                { fn: createFrameBuffers, vars: null },
+                { fn: initVertexBuffers, vars: null },
+                { fn: drawNodes, vars: null }
             ];
+            
+        if(typeof settingsJSON == "string"){
+            this.dirPath = (settingsJSON.indexOf("/") >= 0)?settingsJSON.substring(0, settingsJSON.lastIndexOf("/")+1):"";
+            function_arr.unshift({ fn: loadJSON, vars: settingsJSON });
+        } else {
+            this.data = settingsJSON;
+            this.dirPath = "";
+        }
 
         this.arrayExecuter.execute(function_arr);
     }
@@ -39,15 +45,24 @@
 
     function JSONLoaded(data){
         console.log('JSONLoaded');
-        var currObj;
         data = JSON.parse(data);
         this.data = data;
 
+
+        this.arrayExecuter.stepComplete();
+    }
+    
+    function processJSON(){
+        console.log('processJSON');
+        var data = this.data;
+        
+        if(data["settings"]["dirPath"])this.dirPath = data["settings"]["dirPath"];
         //size the canvas
-        this.canvas.width = data["output"]["dimensions"]["width"]
-        this.canvas.height = data["output"]["dimensions"]["height"];
+        this.canvas.width = data["settings"]["dimensions"]["width"]
+        this.canvas.height = data["settings"]["dimensions"]["height"];
+        
         // this.gl =  this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
-        var preserveDrawingBuffer = (data["output"]["preserveDrawingBuffer"] && String(data["output"]["preserveDrawingBuffer"]).toLowerCase() == "true")?true:false;
+        var preserveDrawingBuffer = (data["settings"]["preserveDrawingBuffer"] && String(data["settings"]["preserveDrawingBuffer"]).toLowerCase() == "true")?true:false;
         this.gl =  this.canvas.getContext("webgl", {
            preserveDrawingBuffer: preserveDrawingBuffer
         }) || this.canvas.getContext("experimental-webgl", {
@@ -60,7 +75,7 @@
         //setup GL parameters
         this.maxTextureUnits = this.gl.getParameter(this.gl.MAX_TEXTURE_IMAGE_UNITS);
         this.nextTexUnit = 0;
-
+        
         this.arrayExecuter.stepComplete();
     }
 

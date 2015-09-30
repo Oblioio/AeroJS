@@ -6,6 +6,6 @@
     "src/GLProgram.js",
     "src/GLTexture.js",
     "src/GLUploaders.js",
-    "src/JSProgram.js",
+    "src/Renderer.js",
     "src/Scene.js"
 ]

@@ -185,9 +185,7 @@ Aero.registerJSProgram = function(id, obj){
 (function(window) {
 
     'use strict';
-
-    var Matrix4 = function () {}
-
+    
     function createRotateX(ang){
         return [
             1,              0,                0,               0,
@@ -223,12 +221,13 @@ Aero.registerJSProgram = function(id, obj){
         ]
     }
 
-    function scale (matA, s) {    	
-		matA[0] *= s; matA[4] *= s; matA[8] *= s;
-		matA[1] *= s; matA[5] *= s; matA[9] *= s;
-		matA[2] *= s; matA[6] *= s; matA[10] *= s;
-		matA[3] *= s; matA[7] *= s; matA[11] *= s;
-		return matA;
+    function scale (matA, s) {   
+		var te = clone(matA);
+		te[0] *= s; te[4] *= s; te[8] *= s;
+		te[1] *= s; te[5] *= s; te[9] *= s;
+		te[2] *= s; te[6] *= s; te[10] *= s;
+		te[3] *= s; te[7] *= s; te[11] *= s;
+		return te;
 	}
 
     function createTranslation(xOff, yOff, zOff){
@@ -244,9 +243,8 @@ Aero.registerJSProgram = function(id, obj){
     	return multiply(matA, createTranslation(xOff, yOff, zOff));
     }
 
-    function createProjection(near, far, fov){
-        var aspect = 1,
-        	top = near * Math.tan( fov * 0.5 ),
+    function createProjection(near, far, fov, aspect){
+        var top = near * Math.tan( fov * 0.5 ),
 			bottom = - top,
 			left = bottom * aspect,
 			right = top * aspect,
@@ -390,9 +388,15 @@ Aero.registerJSProgram = function(id, obj){
         this.inRenderList = false;
 
         this.scene = _scene;
-        this.settings = _settings;
-
         this.gl =  this.scene.gl;
+        // default settings
+        this.settings = {
+                renderMode: "TRIANGLE_STRIP"
+            };
+        
+        // add passed in settings
+        for(var _set in _settings) this.settings[_set] = _settings[_set];
+
         this.drawToCanvas = false;
         this.clearBuffer = (String(_settings.clearBuffer).toLowerCase() == "true")?true:false;
         console.log('this.clearBuffer: '+this.clearBuffer );
@@ -581,7 +585,7 @@ Aero.registerJSProgram = function(id, obj){
 
         this.updateUniforms();
 
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.drawArrays(gl[this.settings.renderMode], 0, 4);
     }
 
     GLProgram.prototype.init = init;
@@ -770,75 +774,22 @@ UTILITY FUNCTIONS
 (function(window) {
 
     'use strict';
-    
-    var JSProgram = function (_settings, _scene) {
-        // console.log('JSProgram');
-        
-        this.program = getObject(_settings.js);
-        
-        // load json object (not this version)
-        // check if js object already exists
-        // if not, attach script
-        // wait for script to attach
-        
-        
-        this.type = "JSProgram";
-        this.inRenderList = false;
-        
-        this.scene = _scene;
-        this.settings = _settings;
-        
-        this.gl =  this.scene.gl;
-        this.drawToCanvas = false;
-        this.outputs = [];
+
+
+    function Renderer(){
         
     }
     
-    function init(){
-        
-        // var function_arr =  [
-                // { fn: bind(loadJSON, this), vars: settingsJSON },
-                // { fn: bind(loadTextures, this), vars: null },
-                // { fn: bind(createProgram, this), vars: null },
-                // { fn: bind(setupUniforms, this), vars: null }
-            // ];
-        
-        // arrayExecuter.execute(function_arr);
+    function render(){
         
     }
-    
-    JSProgram.prototype.init = init;
     
     // add section to Aero namespace
-    Aero.JSProgram = JSProgram;
-    
-    
-/* //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    Aero = Aero || {};
+    Aero.Renderer = Renderer;
 
-UTILITY FUNCTIONS
-
-*/ //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
-    
-    
-    function bind(fn, scope){
-        return function() {
-            return fn.apply(scope, arguments);
-        }
-    }
-    
-    function getObject(str){
-        var chain = str.split("."),
-            obj = window[chain[0]],
-            c;
-            
-        for(c=1; c<chain.length; c++){
-            obj = obj[chain[c]];
-        }
-        return obj;
-    }
-   
 }(window));
+
 (function(window) {
 
     'use strict';
@@ -849,8 +800,6 @@ UTILITY FUNCTIONS
         this.arrayExecuter = new Aero.utils.ArrayExecuter(this);
         this.stepComplete = bind(this.arrayExecuter.stepComplete, this.arrayExecuter);
         
-        this.dirPath = (settingsJSON.indexOf("/") >= 0)?settingsJSON.substring(0, settingsJSON.lastIndexOf("/")+1):"";
-
         if(parameters && parameters.canvas){
             this.canvas = parameters.canvas;
         } else {
@@ -859,15 +808,23 @@ UTILITY FUNCTIONS
         this.nodes = {};
 
         var function_arr =  [
-                { fn: bind(loadJSON, this), vars: settingsJSON },
-                { fn: bind(createTextures, this), vars: null },
-                { fn: bind(createJSPrograms, this), vars: null },
-                { fn: bind(createGLPrograms, this), vars: null },
-                { fn: bind(createRenderList, this), vars: null },
-                { fn: bind(createFrameBuffers, this), vars: null },
-                { fn: bind(initVertexBuffers, this), vars: null },
-                { fn: bind(drawNodes, this), vars: null }
+                { fn: processJSON, vars: settingsJSON },
+                { fn: createTextures, vars: null },
+                { fn: createJSPrograms, vars: null },
+                { fn: createGLPrograms, vars: null },
+                { fn: createRenderList, vars: null },
+                { fn: createFrameBuffers, vars: null },
+                { fn: initVertexBuffers, vars: null },
+                { fn: drawNodes, vars: null }
             ];
+            
+        if(typeof settingsJSON == "string"){
+            this.dirPath = (settingsJSON.indexOf("/") >= 0)?settingsJSON.substring(0, settingsJSON.lastIndexOf("/")+1):"";
+            function_arr.unshift({ fn: loadJSON, vars: settingsJSON });
+        } else {
+            this.data = settingsJSON;
+            this.dirPath = "";
+        }
 
         this.arrayExecuter.execute(function_arr);
     }
@@ -880,15 +837,24 @@ UTILITY FUNCTIONS
 
     function JSONLoaded(data){
         console.log('JSONLoaded');
-        var currObj;
         data = JSON.parse(data);
         this.data = data;
 
+
+        this.arrayExecuter.stepComplete();
+    }
+    
+    function processJSON(){
+        console.log('processJSON');
+        var data = this.data;
+        
+        if(data["settings"]["dirPath"])this.dirPath = data["settings"]["dirPath"];
         //size the canvas
-        this.canvas.width = data["output"]["dimensions"]["width"]
-        this.canvas.height = data["output"]["dimensions"]["height"];
+        this.canvas.width = data["settings"]["dimensions"]["width"]
+        this.canvas.height = data["settings"]["dimensions"]["height"];
+        
         // this.gl =  this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
-        var preserveDrawingBuffer = (data["output"]["preserveDrawingBuffer"] && String(data["output"]["preserveDrawingBuffer"]).toLowerCase() == "true")?true:false;
+        var preserveDrawingBuffer = (data["settings"]["preserveDrawingBuffer"] && String(data["settings"]["preserveDrawingBuffer"]).toLowerCase() == "true")?true:false;
         this.gl =  this.canvas.getContext("webgl", {
            preserveDrawingBuffer: preserveDrawingBuffer
         }) || this.canvas.getContext("experimental-webgl", {
@@ -901,7 +867,7 @@ UTILITY FUNCTIONS
         //setup GL parameters
         this.maxTextureUnits = this.gl.getParameter(this.gl.MAX_TEXTURE_IMAGE_UNITS);
         this.nextTexUnit = 0;
-
+        
         this.arrayExecuter.stepComplete();
     }
 

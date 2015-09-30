@@ -13,9 +13,15 @@
         this.inRenderList = false;
 
         this.scene = _scene;
-        this.settings = _settings;
-
         this.gl =  this.scene.gl;
+        // default settings
+        this.settings = {
+                renderMode: "TRIANGLE_STRIP"
+            };
+        
+        // add passed in settings
+        for(var _set in _settings) this.settings[_set] = _settings[_set];
+
         this.drawToCanvas = false;
         this.clearBuffer = (String(_settings.clearBuffer).toLowerCase() == "true")?true:false;
         console.log('this.clearBuffer: '+this.clearBuffer );
@@ -204,7 +210,7 @@
 
         this.updateUniforms();
 
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.drawArrays(gl[this.settings.renderMode], 0, 4);
     }
 
     GLProgram.prototype.init = init;
