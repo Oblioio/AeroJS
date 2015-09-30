@@ -24,7 +24,6 @@
 
         this.drawToCanvas = false;
         this.clearBuffer = (String(_settings.clearBuffer).toLowerCase() == "true")?true:false;
-        console.log('this.clearBuffer: '+this.clearBuffer );
         
         //shaders
         this.vShader = {
@@ -39,12 +38,10 @@
     function init(callBackFn){
 
         var function_arr =  [
-                // { fn: bind(loadJSON, this), vars: settingsJSON },
-                { fn: bind(loadShader, this), vars: 'vShader' },
-                { fn: bind(loadShader, this), vars: 'fShader' },
-                // { fn: bind(loadTextures, this), vars: null },
-                { fn: bind(createProgram, this), vars: null },
-                { fn: bind(setupUniforms, this), vars: null },
+                { fn: loadShader, vars: 'vShader' },
+                { fn: loadShader, vars: 'fShader' },
+                { fn: createProgram, vars: null },
+                { fn: setupUniforms, vars: null },
                 { fn: callBackFn, vars: null }
             ];
 
@@ -55,10 +52,10 @@
     function loadShader(type){
         console.log('loadShader: '+this[type].path);
         
-        Aero.utils.XHRLoader(this[type].path, bind(function (data){
+        Aero.utils.XHRLoader(this[type].path, function (data){
                 this[type].text = data;
                 this.arrayExecuter.stepComplete();
-            }, this) );
+            }.bind(this) );
         
     }
 
@@ -105,8 +102,7 @@
 
         this.uniforms = [];
         this.inputs = {};
-        // this.uniforms = {};
-        // this.uniformsList = [];
+        
         for(var u in uniformSettings){
             uniObj = uniformSettings[u];
             u_loc = gl.getUniformLocation(this.program, u);
@@ -169,19 +165,8 @@
                 id: u,
                 type: uniObj.type,
                 loc: u_loc,
-                // val: u_val,
                 fn: u_fn
             });
-
-            // var u_settings = {
-            //     id: u,
-            //     type: uniObj.type,
-            //     loc: u_loc,
-            //     val: u_val,
-            //     fn: u_fn
-            // };
-            // this.uniforms[u] = u_settings;
-            // this.uniformsList.push(u);
         }
 
         this.arrayExecuter.stepComplete();
@@ -221,7 +206,6 @@
     Aero.GLProgram = GLProgram;
 
 
-
 /* //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 UTILITY FUNCTIONS
@@ -234,12 +218,6 @@ UTILITY FUNCTIONS
             console.log("Error compiling "+id+": " + this.gl.getShaderInfoLog(shader));
         }
         return compileStatus;
-    }
-
-    function bind(fn, scope){
-        return function() {
-            return fn.apply(scope, arguments);
-        }
     }
 
 }(window));

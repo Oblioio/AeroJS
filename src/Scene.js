@@ -6,24 +6,28 @@
         console.log('Scene');
         
         this.arrayExecuter = new Aero.utils.ArrayExecuter(this);
-        this.stepComplete = bind(this.arrayExecuter.stepComplete, this.arrayExecuter);
+        this.stepComplete = this.arrayExecuter.stepComplete.bind(this.arrayExecuter);
         
         if(parameters && parameters.canvas){
             this.canvas = parameters.canvas;
         } else {
             this.canvas = document.createElement('canvas');
         }
+        this.onReady = (parameters && parameters.onReady)?parameters.onReady:null;
+        
         this.nodes = {};
+        this.renderer = new Aero.Renderer(this);
 
         var function_arr =  [
-                { fn: processJSON, vars: settingsJSON },
+                { fn: dataReady, vars: settingsJSON },
                 { fn: createTextures, vars: null },
                 { fn: createJSPrograms, vars: null },
                 { fn: createGLPrograms, vars: null },
+                // { fn: createRenderer, vars: null },
                 { fn: createRenderList, vars: null },
                 { fn: createFrameBuffers, vars: null },
                 { fn: initVertexBuffers, vars: null },
-                { fn: drawNodes, vars: null }
+                { fn: ready, vars: null }
             ];
             
         if(typeof settingsJSON == "string"){
@@ -52,22 +56,19 @@
         this.arrayExecuter.stepComplete();
     }
     
-    function processJSON(){
-        console.log('processJSON');
+    function dataReady(){
+        console.log('dataReady');
         var data = this.data;
         
         if(data["settings"]["dirPath"])this.dirPath = data["settings"]["dirPath"];
+        
         //size the canvas
-        this.canvas.width = data["settings"]["dimensions"]["width"]
-        this.canvas.height = data["settings"]["dimensions"]["height"];
+        this.renderer.setSize(data["settings"]["dimensions"]["width"], data["settings"]["dimensions"]["height"]);
         
         // this.gl =  this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
-        var preserveDrawingBuffer = (data["settings"]["preserveDrawingBuffer"] && String(data["settings"]["preserveDrawingBuffer"]).toLowerCase() == "true")?true:false;
-        this.gl =  this.canvas.getContext("webgl", {
-           preserveDrawingBuffer: preserveDrawingBuffer
-        }) || this.canvas.getContext("experimental-webgl", {
-           preserveDrawingBuffer: preserveDrawingBuffer
-        });
+        var preserveDrawingBuffer = (this.data["settings"]["preserveDrawingBuffer"] && String(this.data["settings"]["preserveDrawingBuffer"]).toLowerCase() == "true")?true:false;
+        this.gl =  this.canvas.getContext("webgl", {preserveDrawingBuffer: preserveDrawingBuffer}) 
+                || this.canvas.getContext("experimental-webgl", {preserveDrawingBuffer: preserveDrawingBuffer});
 
         // this.gl.clearColor(1.0, 1.0, 1.0, 1.0);
         // this.gl.clear();
@@ -96,7 +97,7 @@
         var textureData = this.data["textures"],
             function_arr =  [];
 
-        this.createTexture = bind(createTexture, this);
+        this.createTexture = createTexture.bind(this);
 
         this.textures = {};
         for(var t in textureData){
@@ -110,7 +111,7 @@
             this.nodes[t] = texObj;
             texObj.id = t;
 
-            function_arr.push({ fn: bind(texObj.loadTexture, texObj), vars: [this.stepComplete] });
+            function_arr.push({ fn: texObj.loadTexture, scope:texObj, vars: [this.stepComplete] });
         }
 
         this.arrayExecuter.execute(function_arr);
@@ -131,7 +132,7 @@
             scriptsAttached = [],
             dependencies = [];
 
-        this.createNextJSProgram = bind(createNextJSProgram, this);
+        this.createNextJSProgram = createNextJSProgram.bind(this);
 
         //programs
         this.JSPrograms = {};
@@ -238,7 +239,7 @@
             this.nodes[p] = progObj;
             progObj.id = p;
             progObj.dependents = []; //this will contain nodes that rely on this node to run first
-            function_arr.push({ fn: bind(progObj.init, progObj), vars: [this.stepComplete] });
+            function_arr.push({ fn: progObj.init, scope:progObj, vars: [this.stepComplete] });
         }
 
         this.arrayExecuter.execute(function_arr);
@@ -692,6 +693,15 @@
               );
         }
     }
+    
+    function ready(){
+        drawNodes.call(this);
+        
+        // call initial render
+        // this.renderer.render();
+        
+        if(this.onReady)this.onReady();
+    }
 
     function drawNodes(){
 
@@ -762,7 +772,7 @@
             }
         }
 
-        window.requestAnimationFrame(bind(drawNodes, this));
+        window.requestAnimationFrame(drawNodes.bind(this));
     }
 
     Scene.prototype.draw = drawNodes;
@@ -776,18 +786,5 @@
 
     // add section to Aero namespace
     Aero.Scene = Scene;
-
-/* //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-UTILITY FUNCTIONS
-
-*/ //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-    function bind(fn, scope){
-        return function() {
-            return fn.apply(scope, arguments);
-        }
-    }
 
 }(window));

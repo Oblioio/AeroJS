@@ -47,7 +47,7 @@
         
         this.imgObj = new Image();
         
-        this.imgObj.onload = bind(textureLoaded, this);
+        this.imgObj.onload = textureLoaded.bind(this);
         
         this.imgObj.src = this.imgURL;
     }
@@ -77,18 +77,5 @@
     // add section to Aero namespace
     Aero.GLTexture = GLTexture;
     
-    
-    
-/* //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-UTILITY FUNCTIONS
-
-*/ //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        
-    function bind(fn, scope){
-        return function() {
-            return fn.apply(scope, arguments);
-        }
-    }
    
 }(window));
