@@ -39,7 +39,7 @@
         
         if(!this.imgURL){
             console.log('loadTexture ERROR: no image url');
-            this.onLoadComplete();
+            if(this.onLoadComplete)this.onLoadComplete();
             this.onLoadComplete = null;
         }
         

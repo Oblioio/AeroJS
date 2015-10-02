@@ -71,7 +71,9 @@
             if (typeof step.vars === "string") {
                 step.vars = [step.vars];
             }
-
+            
+            step.vars.push(this.stepComplete.bind(this));
+            
             funct.apply(step.scope, step.vars);
 
             nullObj(step);

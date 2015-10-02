@@ -40,26 +40,26 @@
         var function_arr =  [
                 { fn: loadShader, vars: 'vShader' },
                 { fn: loadShader, vars: 'fShader' },
-                { fn: createProgram, vars: null },
-                { fn: setupUniforms, vars: null },
-                { fn: callBackFn, vars: null }
+                { fn: createProgram },
+                { fn: setupUniforms },
+                { fn: callBackFn }
             ];
 
         this.arrayExecuter.execute(function_arr);
 
     }
 
-    function loadShader(type){
+    function loadShader(type, callBackFn){
         console.log('loadShader: '+this[type].path);
         
         Aero.utils.XHRLoader(this[type].path, function (data){
                 this[type].text = data;
-                this.arrayExecuter.stepComplete();
+                callBackFn();
             }.bind(this) );
         
     }
 
-    function createProgram(){
+    function createProgram(callBackFn){
         console.log('createProgram');
 
         var gl = this.gl;
@@ -88,10 +88,10 @@
         this.program = program;
         gl.program = program;
 
-        this.arrayExecuter.stepComplete();
+        callBackFn();
     }
 
-    function setupUniforms(){
+    function setupUniforms(callBackFn){
         var gl = this.gl,
             uniformSettings = this.settings.uniforms,
             uniObj,
@@ -169,7 +169,7 @@
             });
         }
 
-        this.arrayExecuter.stepComplete();
+        callBackFn();
     }
 
     function updateUniforms(){

@@ -5,26 +5,30 @@
 
     function Renderer(_scene){
         this.scene = _scene;
+             
+    }
+    
+    // not run until data and canvas are in place
+    function init(){        
         this.gl = this.scene.gl;
+        
+        this.setSize(this.scene.data["settings"]["dimensions"]["width"], this.scene.data["settings"]["dimensions"]["height"]);
         
         //setup initial vars
         this.maxTextureUnits = this.scene.gl.getParameter(this.gl.MAX_TEXTURE_IMAGE_UNITS);
         this.nextTexUnit = 0;
-        this.autoRender = false;
-        
-        this.setSize(this.scene.data["settings"]["dimensions"]["width"], this.scene.data["settings"]["dimensions"]["height"]);
+        this.autoRender = false;   
+                
+        this.arrayExecuter = new Aero.utils.ArrayExecuter(this);
     }
     
-    function init(callBackFn){
-        
-        this.arrayExecuter = new Aero.utils.ArrayExecuter(this);
-        this.stepComplete = this.arrayExecuter.stepComplete.bind(this.arrayExecuter);
+    function update(callBackFn){
         
         var function_arr =  [
-                { fn: createRenderList, vars: null },
-                { fn: createFrameBuffers, vars: null },
-                { fn: initVertexBuffers, vars: null },
-                { fn: callBackFn, vars: null }
+                { fn: createRenderList },
+                { fn: createFrameBuffers },
+                { fn: initVertexBuffers },
+                { fn: callBackFn }
             ];
         
         this.arrayExecuter.execute(function_arr);
@@ -39,7 +43,7 @@
         this.gl.viewport(0, 0, Number(w), Number(h));
     }    
     
-    function createRenderList(){
+    function createRenderList(callBackFn){
         console.log('/////////////////  createRenderList  /////////////////');
         // figure out the render chains.
         // the idea is to track back from any canvas renders
@@ -172,7 +176,7 @@
         }
         console.log(renderOrderStr);
 
-        this.arrayExecuter.stepComplete();
+        callBackFn();
     }
 
     function connectionSearch(connections, dir, id){
@@ -216,7 +220,14 @@
         return false;
     }
     
-    function createFrameBuffers(){
+    function createTexture(textureData){
+        return new Aero.GLTexture({
+            imgURL: textureData,
+            texUnit: this.getNextTexUnit()
+        }, this.scene);
+    }
+    
+    function createFrameBuffers(callBackFn){
         console.log('/////////////////  createFrameBuffers  /////////////////');
         this.frameBuffers = [];
 
@@ -291,7 +302,7 @@
             currNode.outputBuffer = currBuffer.index;
         }
 
-        this.arrayExecuter.stepComplete();
+        callBackFn();
     }
 
     function getNextFrameBuffer(r){
@@ -378,7 +389,7 @@
         return texUnit;
     }
     
-    function initVertexBuffers(){
+    function initVertexBuffers(callBackFn){
         var gl = this.gl;
 
         var verticesTexCoords = new Float32Array([
@@ -409,7 +420,7 @@
 
         this.usingStandardVertexBuffer = false;
 
-        this.arrayExecuter.stepComplete();
+        callBackFn();
     }
 
     function useStandardVertexBuffer(){
@@ -582,10 +593,13 @@
     }
     
     Renderer.prototype.init = init;
+    Renderer.prototype.update = update;
     Renderer.prototype.setSize = setSize;
     Renderer.prototype.start = start;
     Renderer.prototype.pause = pause;
     Renderer.prototype.render = render;
+    
+    Renderer.prototype.createTexture = createTexture;    
     
     Renderer.prototype.getNextTexUnit = getNextTexUnit;
     Renderer.prototype.useStandardVertexBuffer = useStandardVertexBuffer;

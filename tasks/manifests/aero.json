@@ -7,5 +7,6 @@
     "src/GLTexture.js",
     "src/GLUploaders.js",
     "src/Renderer.js",
+    "src/IO.js",
     "src/Scene.js"
 ]

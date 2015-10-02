@@ -98,7 +98,9 @@ Aero.registerJSProgram = function(id, obj){
             if (typeof step.vars === "string") {
                 step.vars = [step.vars];
             }
-
+            
+            step.vars.push(this.stepComplete.bind(this));
+            
             funct.apply(step.scope, step.vars);
 
             nullObj(step);
@@ -399,7 +401,6 @@ Aero.registerJSProgram = function(id, obj){
 
         this.drawToCanvas = false;
         this.clearBuffer = (String(_settings.clearBuffer).toLowerCase() == "true")?true:false;
-        console.log('this.clearBuffer: '+this.clearBuffer );
         
         //shaders
         this.vShader = {
@@ -414,30 +415,28 @@ Aero.registerJSProgram = function(id, obj){
     function init(callBackFn){
 
         var function_arr =  [
-                // { fn: bind(loadJSON, this), vars: settingsJSON },
-                { fn: bind(loadShader, this), vars: 'vShader' },
-                { fn: bind(loadShader, this), vars: 'fShader' },
-                // { fn: bind(loadTextures, this), vars: null },
-                { fn: bind(createProgram, this), vars: null },
-                { fn: bind(setupUniforms, this), vars: null },
-                { fn: callBackFn, vars: null }
+                { fn: loadShader, vars: 'vShader' },
+                { fn: loadShader, vars: 'fShader' },
+                { fn: createProgram },
+                { fn: setupUniforms },
+                { fn: callBackFn }
             ];
 
         this.arrayExecuter.execute(function_arr);
 
     }
 
-    function loadShader(type){
+    function loadShader(type, callBackFn){
         console.log('loadShader: '+this[type].path);
         
-        Aero.utils.XHRLoader(this[type].path, bind(function (data){
+        Aero.utils.XHRLoader(this[type].path, function (data){
                 this[type].text = data;
-                this.arrayExecuter.stepComplete();
-            }, this) );
+                callBackFn();
+            }.bind(this) );
         
     }
 
-    function createProgram(){
+    function createProgram(callBackFn){
         console.log('createProgram');
 
         var gl = this.gl;
@@ -466,10 +465,10 @@ Aero.registerJSProgram = function(id, obj){
         this.program = program;
         gl.program = program;
 
-        this.arrayExecuter.stepComplete();
+        callBackFn();
     }
 
-    function setupUniforms(){
+    function setupUniforms(callBackFn){
         var gl = this.gl,
             uniformSettings = this.settings.uniforms,
             uniObj,
@@ -480,8 +479,7 @@ Aero.registerJSProgram = function(id, obj){
 
         this.uniforms = [];
         this.inputs = {};
-        // this.uniforms = {};
-        // this.uniformsList = [];
+        
         for(var u in uniformSettings){
             uniObj = uniformSettings[u];
             u_loc = gl.getUniformLocation(this.program, u);
@@ -544,22 +542,11 @@ Aero.registerJSProgram = function(id, obj){
                 id: u,
                 type: uniObj.type,
                 loc: u_loc,
-                // val: u_val,
                 fn: u_fn
             });
-
-            // var u_settings = {
-            //     id: u,
-            //     type: uniObj.type,
-            //     loc: u_loc,
-            //     val: u_val,
-            //     fn: u_fn
-            // };
-            // this.uniforms[u] = u_settings;
-            // this.uniformsList.push(u);
         }
 
-        this.arrayExecuter.stepComplete();
+        callBackFn();
     }
 
     function updateUniforms(){
@@ -596,7 +583,6 @@ Aero.registerJSProgram = function(id, obj){
     Aero.GLProgram = GLProgram;
 
 
-
 /* //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 UTILITY FUNCTIONS
@@ -609,12 +595,6 @@ UTILITY FUNCTIONS
             console.log("Error compiling "+id+": " + this.gl.getShaderInfoLog(shader));
         }
         return compileStatus;
-    }
-
-    function bind(fn, scope){
-        return function() {
-            return fn.apply(scope, arguments);
-        }
     }
 
 }(window));
@@ -660,7 +640,7 @@ UTILITY FUNCTIONS
         
         if(!this.imgURL){
             console.log('loadTexture ERROR: no image url');
-            this.onLoadComplete();
+            if(this.onLoadComplete)this.onLoadComplete();
             this.onLoadComplete = null;
         }
         
@@ -668,7 +648,7 @@ UTILITY FUNCTIONS
         
         this.imgObj = new Image();
         
-        this.imgObj.onload = bind(textureLoaded, this);
+        this.imgObj.onload = textureLoaded.bind(this);
         
         this.imgObj.src = this.imgURL;
     }
@@ -698,95 +678,51 @@ UTILITY FUNCTIONS
     // add section to Aero namespace
     Aero.GLTexture = GLTexture;
     
-    
-    
-/* //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-UTILITY FUNCTIONS
-
-*/ //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        
-    function bind(fn, scope){
-        return function() {
-            return fn.apply(scope, arguments);
-        }
-    }
    
 }(window));
 (function(window) {
-
+    
     'use strict';
-
-    var GLUploaders = function (_settings, _scene) {
-
-    }
-
-    GLUploaders.prototype.uniform1f = function(gl, u_loc, u_val){
-        gl.uniform1f(u_loc, u_val);
-    };
-
-    GLUploaders.prototype.uniform2f = function(gl, u_loc, u_val){
-        gl.uniform2f(u_loc, u_val[0], u_val[1]);
-    };
-
-    GLUploaders.prototype.uniform3f = function(gl, u_loc, u_val){
-        gl.uniform3f(u_loc, u_val[0], u_val[1], u_val[2]);
-    };
     
-    GLUploaders.prototype.uniform4f = function(gl, u_loc, u_val){
-        gl.uniform4f(u_loc, u_val[0], u_val[1], u_val[2], u_val[3]);
-    };
-
-    GLUploaders.prototype.uniform1i = function(gl, u_loc, u_val){
-        gl.uniform1i(u_loc, u_val);
-    }
-
-    GLUploaders.prototype.uniform2i = function(gl, u_loc, u_val){
-        gl.uniform2i(u_loc, u_val);
-    }
-
-    GLUploaders.prototype.uniform3i = function(gl, u_loc, u_val){
-        gl.uniform3i(u_loc, u_val);
-    }
-    
-    GLUploaders.prototype.uniform4i = function(gl, u_loc, u_val){
-        gl.uniform3i(u_loc, u_val);
-    }
-
-    GLUploaders.prototype.uniformMatrix2fv = function(gl, u_loc, u_val){
-        gl.uniformMatrix2fv(u_loc, gl.FALSE, u_val);
-    }
-
-    GLUploaders.prototype.uniformMatrix3fv = function(gl, u_loc, u_val){
-        gl.uniformMatrix3fv(u_loc, gl.FALSE, u_val);
-    }
-
-    GLUploaders.prototype.uniformMatrix4fv = function(gl, u_loc, u_val){
-        gl.uniformMatrix4fv(u_loc, gl.FALSE, u_val);
-    }
-
-    // add section to Aero namespace
-    Aero.GLUploaders = new GLUploaders();
-
-
-}(window));
-
-(function(window) {
-
-    'use strict';
-
-
-    function Renderer(){
-        
-    }
-    
-    function render(){
-        
-    }
     
     // add section to Aero namespace
     Aero = Aero || {};
-    Aero.Renderer = Renderer;
+    Aero.GLUploaders = {
+        uniform1f: function(gl, u_loc, u_val){
+            gl.uniform1f(u_loc, u_val);
+        },
+        uniform2f: function(gl, u_loc, u_val){
+            gl.uniform2f(u_loc, u_val[0], u_val[1]);
+        },
+        uniform3f: function(gl, u_loc, u_val){
+            gl.uniform3f(u_loc, u_val[0], u_val[1], u_val[2]);
+        },
+        uniform4f: function(gl, u_loc, u_val){
+            gl.uniform4f(u_loc, u_val[0], u_val[1], u_val[2], u_val[3]);
+        },
+        uniform1i: function(gl, u_loc, u_val){
+            gl.uniform1i(u_loc, u_val);
+        },
+        uniform2i: function(gl, u_loc, u_val){
+            gl.uniform2i(u_loc, u_val);
+        },
+        uniform3i: function(gl, u_loc, u_val){
+            gl.uniform3i(u_loc, u_val);
+        },        
+        uniform4i: function(gl, u_loc, u_val){
+            gl.uniform3i(u_loc, u_val);
+        },
+        uniformMatrix2fv: function(gl, u_loc, u_val){
+            gl.uniformMatrix2fv(u_loc, gl.FALSE, u_val);
+        },
+        uniformMatrix3fv: function(gl, u_loc, u_val){
+            gl.uniformMatrix3fv(u_loc, gl.FALSE, u_val);
+        },
+        uniformMatrix4fv: function(gl, u_loc, u_val){
+            gl.uniformMatrix4fv(u_loc, gl.FALSE, u_val);
+        }
+    }
+
 
 }(window));
 
@@ -794,256 +730,55 @@ UTILITY FUNCTIONS
 
     'use strict';
 
-    var Scene = function (settingsJSON, parameters) {
-        console.log('Scene');
-        
-        this.arrayExecuter = new Aero.utils.ArrayExecuter(this);
-        this.stepComplete = bind(this.arrayExecuter.stepComplete, this.arrayExecuter);
-        
-        if(parameters && parameters.canvas){
-            this.canvas = parameters.canvas;
-        } else {
-            this.canvas = document.createElement('canvas');
-        }
-        this.nodes = {};
 
-        var function_arr =  [
-                { fn: processJSON, vars: settingsJSON },
-                { fn: createTextures, vars: null },
-                { fn: createJSPrograms, vars: null },
-                { fn: createGLPrograms, vars: null },
-                { fn: createRenderList, vars: null },
-                { fn: createFrameBuffers, vars: null },
-                { fn: initVertexBuffers, vars: null },
-                { fn: drawNodes, vars: null }
-            ];
-            
-        if(typeof settingsJSON == "string"){
-            this.dirPath = (settingsJSON.indexOf("/") >= 0)?settingsJSON.substring(0, settingsJSON.lastIndexOf("/")+1):"";
-            function_arr.unshift({ fn: loadJSON, vars: settingsJSON });
-        } else {
-            this.data = settingsJSON;
-            this.dirPath = "";
-        }
-
-        this.arrayExecuter.execute(function_arr);
-    }
-
-    function loadJSON(url){
-        console.log('loadJSON');
-        
-        Aero.utils.XHRLoader(url, bind(JSONLoaded, this));
-    }
-
-    function JSONLoaded(data){
-        console.log('JSONLoaded');
-        data = JSON.parse(data);
-        this.data = data;
-
-
-        this.arrayExecuter.stepComplete();
+    function Renderer(_scene){
+        this.scene = _scene;
+             
     }
     
-    function processJSON(){
-        console.log('processJSON');
-        var data = this.data;
+    // not run until data and canvas are in place
+    function init(){        
+        this.gl = this.scene.gl;
         
-        if(data["settings"]["dirPath"])this.dirPath = data["settings"]["dirPath"];
-        //size the canvas
-        this.canvas.width = data["settings"]["dimensions"]["width"]
-        this.canvas.height = data["settings"]["dimensions"]["height"];
+        this.setSize(this.scene.data["settings"]["dimensions"]["width"], this.scene.data["settings"]["dimensions"]["height"]);
         
-        // this.gl =  this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
-        var preserveDrawingBuffer = (data["settings"]["preserveDrawingBuffer"] && String(data["settings"]["preserveDrawingBuffer"]).toLowerCase() == "true")?true:false;
-        this.gl =  this.canvas.getContext("webgl", {
-           preserveDrawingBuffer: preserveDrawingBuffer
-        }) || this.canvas.getContext("experimental-webgl", {
-           preserveDrawingBuffer: preserveDrawingBuffer
-        });
-
-        // this.gl.clearColor(1.0, 1.0, 1.0, 1.0);
-        // this.gl.clear();
-
-        //setup GL parameters
-        this.maxTextureUnits = this.gl.getParameter(this.gl.MAX_TEXTURE_IMAGE_UNITS);
+        //setup initial vars
+        this.maxTextureUnits = this.scene.gl.getParameter(this.gl.MAX_TEXTURE_IMAGE_UNITS);
         this.nextTexUnit = 0;
+        this.autoRender = false;   
+                
+        this.arrayExecuter = new Aero.utils.ArrayExecuter(this);
+    }
+    
+    function update(callBackFn){
         
-        this.arrayExecuter.stepComplete();
-    }
-
-    function nodeIsTaken(id){
-        console.log('ERROR: cannot have more than one node with id "'+id+'"');
-    }
-
-    function getNextTexUnit(){
-        var texUnit = this.nextTexUnit;
-        if(texUnit >= this.maxTextureUnits)
-            console.log("ERROR: TexUnit "+texUnit+" | Only "+this.maxTextureUnits+" are supported.");
-        this.nextTexUnit++;
-        return texUnit;
-    }
-
-    function createTextures(){
-        console.log('/////////////////  createTextures  /////////////////');
-        var textureData = this.data["textures"],
-            function_arr =  [];
-
-        this.createTexture = bind(createTexture, this);
-
-        this.textures = {};
-        for(var t in textureData){
-            if(this.nodes.hasOwnProperty(t)){
-                nodeIsTaken(t);
-                return;
-            }
-
-            var texObj = this.createTexture(textureData[t]);
-            this.textures[t] = texObj;
-            this.nodes[t] = texObj;
-            texObj.id = t;
-
-            function_arr.push({ fn: bind(texObj.loadTexture, texObj), vars: [this.stepComplete] });
-        }
-
+        var function_arr =  [
+                { fn: createRenderList },
+                { fn: createFrameBuffers },
+                { fn: initVertexBuffers },
+                { fn: callBackFn }
+            ];
+        
         this.arrayExecuter.execute(function_arr);
     }
-
-    function createTexture(textureData){
-        return new Aero.GLTexture({
-            imgURL: textureData,
-            texUnit: this.getNextTexUnit()
-        }, this);
-    }
-
-    function createJSPrograms(){
-        console.log('/////////////////  createJSPrograms  /////////////////');
-        // var programData = this.data["jsPrograms"] || this.data["JSPrograms"],
-        var programData = this.data["jsPrograms"] || this.data["JSPrograms"],
-            function_arr =  [],
-            scriptsAttached = [],
-            dependencies = [];
-
-        this.createNextJSProgram = bind(createNextJSProgram, this);
-
-        //programs
-        this.JSPrograms = {};
-        for(var p in programData){
-            if(this.nodes.hasOwnProperty(p)){
-                nodeIsTaken(p);
-                return;
-            }
-
-            // check dependencies
-            var s, d, exists;
-            if(programData[p].dependencies && programData[p].dependencies.length){
-                for(s=0; s<programData[p].dependencies.length; s++ ){
-                    exists = false;
-                    programData[p].dependencies[s] = programData[p].dependencies[s].replace('~/', this.dirPath);
-                    for(d=0; d<dependencies.length; d++)
-                        if(programData[p].dependencies[s] == dependencies[d])
-                            exists = true;
-                    if(!exists){
-                        dependencies.push(programData[p].dependencies[s]);
-                        function_arr.push({ fn: add_script, vars: [programData[p].dependencies[s], this.stepComplete] });
-                    }
-                }
-            }
-
-            this.JSPrograms[p] = {data: programData[p], obj:false};
-
-            function_arr.push({ fn: this.createNextJSProgram, vars: String(''+p) });
-        }
-
-        this.arrayExecuter.execute(function_arr);
-    }
-
-    // pulled from https://software.intel.com/en-us/blogs/2010/05/22/dynamically-load-javascript-with-load-completion-notification
-    function add_script(scriptURL, onloadCB) {
-      var scriptEl    = document.createElement("script");
-      scriptEl.type   = "text/javascript";
-      scriptEl.src    = scriptURL;
-
-      var scriptLoaded = function() {
-        console.log('add script: loaded')
-        onloadCB(scriptURL);
-      }
-
-      if(typeof(scriptEl.addEventListener) != 'undefined') {
-        /* The FF, Chrome, Safari, Opera way */
-        scriptEl.addEventListener('load',scriptLoaded,false);
-      }
-
-      else {
-        var handleIeState = function() {
-          if(scriptEl.readyState == 'loaded'){
-            scriptLoaded(scriptURL);
-          }
-        }
-        var ret = scriptEl.attachEvent('onreadystatechange',handleIeState);
-      }
-
-      document.getElementsByTagName("head")[0].appendChild(scriptEl);
-    }
-
-
-    function createNextJSProgram(id){
-        console.log('createNextJSProgram: '+id);
-
-        if (!Aero.JSPrograms[this.JSPrograms[id].data.id]){
-            // the JS Program has not been attached yet
-            // window.requestAnimationFrame(bind(function(){
-            //     this.createNextJSProgram(id);
-            // }, this));
-            console.log('There is no registered JSProgram with the id: '+this.JSPrograms[id].data.id);
-            return
-        } else {
-            var progObj = new Aero.JSPrograms[this.JSPrograms[id].data.id](this.JSPrograms[id].data, this);
-            this.JSPrograms[id] = progObj;
-            this.nodes[id] = progObj;
-            progObj.id = id;
-            progObj.type = "JSProgram";
-            progObj.dependents = []; //this will contain nodes that rely on this node to run first
-            if(progObj.init){
-                progObj.init(this.stepComplete);
-            } else {
-                this.arrayExecuter.stepComplete();
-            }
-            if(!progObj.run)progObj.run = function(){};
-        }
-
-    }
-
-    function createGLPrograms(){
-        console.log('/////////////////  createGLPrograms  /////////////////');
-        var programData = this.data["glPrograms"] || this.data["GLPrograms"],
-            function_arr =  [];
-
-        //programs
-        this.GLPrograms = {};
-        for(var p in programData){
-            if(this.nodes.hasOwnProperty(p)){
-                nodeIsTaken(p);
-                return;
-            }
-            var progObj = new Aero.GLProgram(programData[p], this);
-            this.GLPrograms[p] = progObj;
-            this.nodes[p] = progObj;
-            progObj.id = p;
-            progObj.dependents = []; //this will contain nodes that rely on this node to run first
-            function_arr.push({ fn: bind(progObj.init, progObj), vars: [this.stepComplete] });
-        }
-
-        this.arrayExecuter.execute(function_arr);
-    }
-
-    function createRenderList(){
+    
+    function setSize(w, h){
+        console.log('setSize: '+w+', '+h);
+        //size the canvas
+        this.scene.canvas.width = w;
+        this.scene.canvas.height = h;
+        
+        this.gl.viewport(0, 0, Number(w), Number(h));
+    }    
+    
+    function createRenderList(callBackFn){
         console.log('/////////////////  createRenderList  /////////////////');
         // figure out the render chains.
         // the idea is to track back from any canvas renders
         // the order doesn't have to be exact order, but all
         // dependencies must be figured out
-
-        var connections = this.data["connections"],
+        
+        var connections = this.scene.data["connections"],
             nodesToCheck = connectionSearch(connections, 'dest', 'canvas'), //initial connections to check
             connectedNodes = [],
             currConnection,
@@ -1169,7 +904,7 @@ UTILITY FUNCTIONS
         }
         console.log(renderOrderStr);
 
-        this.arrayExecuter.stepComplete();
+        callBackFn();
     }
 
     function connectionSearch(connections, dir, id){
@@ -1188,7 +923,7 @@ UTILITY FUNCTIONS
         var containerObj = false,
             nodeObj = false;
 
-        containerObj = this.nodes;
+        containerObj = this.scene.nodes;
 
         if(!containerObj){
             console.log('getConnectedNode: node type '+connection[dir]['type']+' returned no results');
@@ -1212,8 +947,15 @@ UTILITY FUNCTIONS
 
         return false;
     }
-
-    function createFrameBuffers(){
+    
+    function createTexture(textureData){
+        return new Aero.GLTexture({
+            imgURL: textureData,
+            texUnit: this.getNextTexUnit()
+        }, this.scene);
+    }
+    
+    function createFrameBuffers(callBackFn){
         console.log('/////////////////  createFrameBuffers  /////////////////');
         this.frameBuffers = [];
 
@@ -1226,14 +968,14 @@ UTILITY FUNCTIONS
         // loop through frame buffers defined in JSON, if any
         // create buffer for each object and assign it to node
 
-        if(this.data["frameBuffers"]){
-            for(var r in this.data["frameBuffers"]){
-                var buffObj = this.data["frameBuffers"][r];
+        if(this.scene.data["frameBuffers"]){
+            for(var r in this.scene.data["frameBuffers"]){
+                var buffObj = this.scene.data["frameBuffers"][r];
                 if(buffObj["nodes"] && buffObj["nodes"].length){
                     currBuffer = getNextFrameBuffer.call(this, 0);
                     currBuffer.holdForever = true;
                     for(o=0; o<buffObj["nodes"].length; o++){
-                        currNode = this.nodes[buffObj["nodes"][o]];
+                        currNode = this.scene.nodes[buffObj["nodes"][o]];
                         if(!currNode){
                             console.log('Could not assign frame buffer "'+r+'" to node "'+buffObj["nodes"][o]+'" because it does not exist');
                             continue;
@@ -1275,7 +1017,7 @@ UTILITY FUNCTIONS
             for(o=0; o<currNode.dependents.length; o++){
                 // getRenderListIndex(this.renderList, connectedNode);
                 // connectedNode = this.GLPrograms[currNode.dependents[o].id];
-                connectedNode = this.nodes[currNode.dependents[o].id];
+                connectedNode = this.scene.nodes[currNode.dependents[o].id];
                 
                 // if(connectedNode.type == "GLProgram")connectedNode.setUniform(currNode.dependents[o].var, currBuffer.texUnit); //set the texture unit index
                 if(connectedNode.type == "GLProgram")
@@ -1288,7 +1030,7 @@ UTILITY FUNCTIONS
             currNode.outputBuffer = currBuffer.index;
         }
 
-        this.arrayExecuter.stepComplete();
+        callBackFn();
     }
 
     function getNextFrameBuffer(r){
@@ -1320,8 +1062,8 @@ UTILITY FUNCTIONS
             rttFramebuffer,
             rttTexture,
             renderbuffer = gl.createRenderbuffer(),
-            bufferWidth = this.canvas.width,
-            bufferHeight = this.canvas.height,
+            bufferWidth = this.scene.canvas.width,
+            bufferHeight = this.scene.canvas.height,
             texUnit = this.getNextTexUnit();
 
         console.log('createFrameBuffer: texUnit '+texUnit);
@@ -1367,7 +1109,15 @@ UTILITY FUNCTIONS
         }
     }
 
-    function initVertexBuffers(){
+    function getNextTexUnit(){
+        var texUnit = this.nextTexUnit;
+        if(texUnit >= this.maxTextureUnits)
+            console.log("ERROR: TexUnit "+texUnit+" | Only "+this.maxTextureUnits+" are supported.");
+        this.nextTexUnit++;
+        return texUnit;
+    }
+    
+    function initVertexBuffers(callBackFn){
         var gl = this.gl;
 
         var verticesTexCoords = new Float32Array([
@@ -1398,7 +1148,7 @@ UTILITY FUNCTIONS
 
         this.usingStandardVertexBuffer = false;
 
-        this.arrayExecuter.stepComplete();
+        callBackFn();
     }
 
     function useStandardVertexBuffer(){
@@ -1484,9 +1234,22 @@ UTILITY FUNCTIONS
               );
         }
     }
-
-    function drawNodes(){
-
+    
+    
+    
+    
+    function start(){
+        if(this.autoRender)return;
+        this.autoRender = true;
+        this.render();
+    }
+    
+    function pause(){
+        this.autoRender = false;        
+    }
+    
+    function render(){
+        
         var gl = this.gl,
             nodeObj,
             d;
@@ -1554,32 +1317,330 @@ UTILITY FUNCTIONS
             }
         }
 
-        window.requestAnimationFrame(bind(drawNodes, this));
+        if(this.autoRender)window.requestAnimationFrame(render.bind(this));
+    }
+    
+    Renderer.prototype.init = init;
+    Renderer.prototype.update = update;
+    Renderer.prototype.setSize = setSize;
+    Renderer.prototype.start = start;
+    Renderer.prototype.pause = pause;
+    Renderer.prototype.render = render;
+    
+    Renderer.prototype.createTexture = createTexture;    
+    
+    Renderer.prototype.getNextTexUnit = getNextTexUnit;
+    Renderer.prototype.useStandardVertexBuffer = useStandardVertexBuffer;
+    Renderer.prototype.useCustomVertexBuffer = useCustomVertexBuffer;
+    Renderer.prototype.createCustomVertexBuffer = createCustomVertexBuffer;
+    Renderer.prototype.updateCustomVertexBuffer = updateCustomVertexBuffer;
+    
+    // add section to Aero namespace
+    Aero = Aero || {};
+    Aero.Renderer = Renderer;
+
+}(window));
+
+(function(window) {
+
+    'use strict';
+
+
+    function IO(_scene){
+        this.scene = _scene;
+        this.arrayExecuter = new Aero.utils.ArrayExecuter(this);
+        this.dependencies = [];
+    }
+    
+    function loadData(settingsJSON, callBackFn){
+        console.log('AERO: loadData');
+        if(typeof settingsJSON == "string"){     
+            // settingsJSON is external path   
+            Aero.utils.XHRLoader(settingsJSON, function(data){                     
+                this.scene.dirPath = (settingsJSON.indexOf("/") >= 0)?settingsJSON.substring(0, settingsJSON.lastIndexOf("/")+1):"";
+                this.scene.data = JSON.parse(data);
+                callBackFn();
+            }.bind(this));            
+            
+        } else {
+            // settingsJSON is obj
+            this.scene.dirPath = "";
+            this.scene.data = settingsJSON;
+            callBackFn();
+        }
+    }
+    
+    function buildData(jsonObj, callBackFn){
+        console.log('AERO: buildData');
+                
+        var function_arr =  [
+                { fn: createTextures, vars: [jsonObj["textures"]] },
+                { fn: createJSPrograms, vars: [jsonObj["jsPrograms"] || jsonObj["JSPrograms"]] },
+                { fn: createGLPrograms, vars: [jsonObj["glPrograms"] || jsonObj["GLPrograms"]] },
+                { fn: callBackFn}
+            ];
+            
+        this.arrayExecuter.execute(function_arr);
+    }
+    
+    function createTextures(textureData, callBackFn){
+        console.log('/////////////////  createTextures  /////////////////');
+        var function_arr = [];
+        
+        for(var id in textureData){
+            function_arr.push({fn: this.scene.createTexture, scope:this.scene, vars:[id, textureData[id]] });
+        }
+        if(!function_arr.length){
+            callBackFn();
+        } else {
+            function_arr.push({fn: callBackFn });
+            this.arrayExecuter.execute(function_arr);
+        }
+    }
+    
+    function createJSPrograms(programData, callBackFn){
+        console.log('/////////////////  createJSPrograms  /////////////////');
+        var function_arr = [];
+        
+        for(var id in programData){
+            function_arr.push({fn: this.scene.createJSProgram, scope:this.scene, vars:[id, programData[id]] });
+        }
+        if(!function_arr.length){
+            callBackFn();
+        } else {
+            function_arr.push({fn: callBackFn });
+            this.arrayExecuter.execute(function_arr);
+        }
+    }
+    
+    // returns true if already loaded
+    function checkDependency(_file){
+        for(var d=0; d<this.dependencies.length; d++)
+                if(_file == this.dependencies[d])
+                    return true;
+        return false;
+    }
+    
+    function loadDependencies(_files, callBackFn){
+        var function_arr = [],
+            exists, s, d;
+            
+        for( s=0; s<_files.length; s++ ){
+            if( !this.checkDependency(_files[s]) ){                
+                this.dependencies.push(_files[s]);
+                function_arr.push({ fn: add_script, vars: [_files[s]] });
+            }
+        }
+        if(!function_arr.length){
+            callBackFn();
+        } else {
+            function_arr.push({fn: callBackFn });
+            this.arrayExecuter.execute(function_arr);
+        }
+    }
+    
+    // pulled from https://software.intel.com/en-us/blogs/2010/05/22/dynamically-load-javascript-with-load-completion-notification
+    function add_script(scriptURL, onloadCB) {
+      var scriptEl    = document.createElement("script");
+      scriptEl.type   = "text/javascript";
+      scriptEl.src    = scriptURL.replace('~/', this.scene.dirPath);
+      
+      console.log('add_script: '+scriptURL);
+      
+      var scriptLoaded = function() {
+        console.log('add script: loaded')
+        onloadCB(scriptURL);
+      }
+
+      if(typeof(scriptEl.addEventListener) != 'undefined') {
+        /* The FF, Chrome, Safari, Opera way */
+        scriptEl.addEventListener('load',scriptLoaded,false);
+      }
+
+      else {
+        var handleIeState = function() {
+          if(scriptEl.readyState == 'loaded'){
+            scriptLoaded(scriptURL);
+          }
+        }
+        var ret = scriptEl.attachEvent('onreadystatechange',handleIeState);
+      }
+
+      document.getElementsByTagName("head")[0].appendChild(scriptEl);
+    }
+    
+    function createGLPrograms(programData, callBackFn){
+        console.log('/////////////////  createGLPrograms  /////////////////');
+        var function_arr = [];
+        
+        for(var id in programData){
+            function_arr.push({fn: this.scene.createGLProgram, scope:this.scene, vars:[id, programData[id]] });
+        }
+        if(!function_arr.length){
+            callBackFn();
+        } else {
+            function_arr.push({fn: callBackFn });
+            this.arrayExecuter.execute(function_arr);
+        }
+    }
+    
+    IO.prototype.loadData = loadData;
+    IO.prototype.checkDependency = checkDependency;
+    IO.prototype.loadDependencies = loadDependencies;
+    IO.prototype.buildData = buildData;
+    
+    // add section to Aero namespace
+    Aero = Aero || {};
+    Aero.IO = IO;
+
+}(window));
+
+(function(window) {
+
+    'use strict';
+    
+
+    var Scene = function (settingsJSON, parameters) {
+        console.log('Scene');
+        
+        if(parameters && parameters.canvas){
+            this.canvas = parameters.canvas;
+        } else {
+            this.canvas = document.createElement('canvas');
+        }
+        
+        this.arrayExecuter = new Aero.utils.ArrayExecuter(this);
+        this.stepComplete = this.arrayExecuter.stepComplete.bind(this.arrayExecuter);
+        this.renderer = new Aero.Renderer(this);
+        this.io = new Aero.IO(this);
+        
+        this.onReady = (parameters && parameters.onReady)?parameters.onReady:null;
+        
+        this.nodes = {};
+
+        var function_arr =  [
+                { fn: this.io.loadData, scope:this.io, vars: [settingsJSON] },
+                { fn: dataReady },
+                { fn: initRenderer },
+                { fn: initComplete }
+            ];
+        
+        this.arrayExecuter.execute(function_arr);
+    }
+    
+    function dataReady(callbackFn){
+        console.log('dataReady');
+        var data = this.data;
+        
+        if(data["settings"]["dirPath"])this.dirPath = data["settings"]["dirPath"];
+        
+        // this.gl =  this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
+        var preserveDrawingBuffer = (this.data["settings"]["preserveDrawingBuffer"] && String(this.data["settings"]["preserveDrawingBuffer"]).toLowerCase() == "true")?true:false;
+        this.gl =  this.canvas.getContext("webgl", {preserveDrawingBuffer: preserveDrawingBuffer}) 
+                || this.canvas.getContext("experimental-webgl", {preserveDrawingBuffer: preserveDrawingBuffer});
+        
+        this.renderer.init();
+        this.io.buildData(this.data, callbackFn);
+        
+        // this.arrayExecuter.stepComplete();
+    }
+    
+    function initRenderer(callbackFn){
+        this.renderer.update(callbackFn);
+    }
+    
+    function initComplete(){
+        // call initial render
+        if(this.data["settings"]["autoRender"])this.renderer.start();
+        
+        if(this.onReady)this.onReady();
+    }
+    
+    function checkNodeId(id){
+        if(this.nodes.hasOwnProperty(id)){
+            console.log('ERROR: cannot have more than one node with id "'+id+'"');
+            return false;
+        }
+        return true
+    }
+    
+    function createTexture(id, textureData, callbackFn){
+        if(!this.checkNodeId(id))return;
+        
+        var texObj = this.renderer.createTexture(textureData);
+        
+        // this.textures[id] = texObj;
+        this.nodes[id] = texObj;
+        texObj.id = id;
+        
+        texObj.loadTexture(callbackFn);
+    }
+        
+    function createJSProgram(id, obj, callbackFn){
+        if(!this.checkNodeId(id))return;
+        
+        // if dependencies then load them first
+        if(obj.dependencies && obj.dependencies.length){
+            var filesToLoad = false;            
+            for(var s=0; s<obj.dependencies.length; s++ )
+                if( !this.io.checkDependency(obj.dependencies[s]) )
+                    filesToLoad = true;
+                
+            if(filesToLoad){
+                this.io.loadDependencies(obj.dependencies, function(){
+                    this.createJSProgram(id, obj, callbackFn);
+                }.bind(this));
+                return;
+            }
+        }
+            
+        var progObj = new Aero.JSPrograms[obj.id](obj, this);
+        
+        // this.JSPrograms[id] = progObj;
+        this.nodes[id] = progObj;
+        progObj.id = id;
+        progObj.type = "JSProgram";
+        progObj.dependents = []; //this will contain nodes that rely on this node to run first
+        if(progObj.init){
+            progObj.init(callbackFn);
+        } else {
+            callbackFn();
+        }
+        if(!progObj.run)progObj.run = function(){};
+        
+    }    
+    
+    function createGLProgram(id, obj, callbackFn){
+        if(!this.checkNodeId(id))return;
+                
+        var progObj = new Aero.GLProgram(obj, this);
+        
+        // this.GLPrograms[id] = progObj;
+        this.nodes[id] = progObj;
+        progObj.id = id;
+        progObj.dependents = []; //this will contain nodes that rely on this node to run first
+        progObj.init(callbackFn);
+    }
+    
+    
+    // convenience functions
+    
+    Scene.prototype.render = function(){
+        this.renderer.render();        
     }
 
-    Scene.prototype.draw = drawNodes;
-    Scene.prototype.getNextTexUnit = getNextTexUnit;
-    Scene.prototype.useStandardVertexBuffer = useStandardVertexBuffer;
-    Scene.prototype.useCustomVertexBuffer = useCustomVertexBuffer;
-    Scene.prototype.createCustomVertexBuffer = createCustomVertexBuffer;
-    Scene.prototype.updateCustomVertexBuffer = updateCustomVertexBuffer;
+    Scene.prototype.checkNodeId = checkNodeId;
+    Scene.prototype.createTexture = createTexture;
+    Scene.prototype.createJSProgram = createJSProgram;
+    Scene.prototype.createGLProgram = createGLProgram;
+    // Scene.prototype.useStandardVertexBuffer = useStandardVertexBuffer;
+    // Scene.prototype.useCustomVertexBuffer = useCustomVertexBuffer;
+    // Scene.prototype.createCustomVertexBuffer = createCustomVertexBuffer;
+    // Scene.prototype.updateCustomVertexBuffer = updateCustomVertexBuffer;
 
 
 
     // add section to Aero namespace
     Aero.Scene = Scene;
-
-/* //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-UTILITY FUNCTIONS
-
-*/ //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-    function bind(fn, scope){
-        return function() {
-            return fn.apply(scope, arguments);
-        }
-    }
 
 }(window));
