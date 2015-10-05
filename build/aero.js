@@ -404,11 +404,11 @@ Aero.registerJSProgram = function(id, obj){
         
         //shaders
         this.vShader = {
-            path: this.settings["vertexShader"].replace('~/', this.scene.dirPath)
+            path: this.settings["vertexShader"]
         }
 
         this.fShader = {
-            path: this.settings["fragmentShader"].replace('~/', this.scene.dirPath)
+            path: this.settings["fragmentShader"]
         }
     }
 
@@ -429,10 +429,16 @@ Aero.registerJSProgram = function(id, obj){
     function loadShader(type, callBackFn){
         console.log('loadShader: '+this[type].path);
         
-        Aero.utils.XHRLoader(this[type].path, function (data){
-                this[type].text = data;
-                callBackFn();
-            }.bind(this) );
+        if(this.scene.data.library[this[type].path]){
+            this[type].text = this.scene.data.library[this[type].path];
+            callBackFn();
+        } else {
+            Aero.utils.XHRLoader(String(this[type].path).replace('~/', this.scene.dirPath), function (data){
+                console.log(data);
+                    this[type].text = data;
+                    callBackFn();
+                }.bind(this) );
+        }
         
     }
 
@@ -580,6 +586,7 @@ Aero.registerJSProgram = function(id, obj){
     GLProgram.prototype.render = render;
 
     // add section to Aero namespace
+    Aero = Aero || {};
     Aero.GLProgram = GLProgram;
 
 
@@ -676,6 +683,7 @@ UTILITY FUNCTIONS
     GLTexture.prototype.loadTexture = loadTexture;
     
     // add section to Aero namespace
+    Aero = Aero || {};
     Aero.GLTexture = GLTexture;
     
    
@@ -1428,7 +1436,12 @@ UTILITY FUNCTIONS
         for( s=0; s<_files.length; s++ ){
             if( !this.checkDependency(_files[s]) ){                
                 this.dependencies.push(_files[s]);
-                function_arr.push({ fn: add_script, vars: [_files[s]] });
+                console.log(_files[s]);
+                if(this.scene.data.library[_files[s]]){
+                    write_script(this.scene.data.library[_files[s]]);
+                } else {
+                    function_arr.push({ fn: add_script, vars: [_files[s]] });
+                }
             }
         }
         if(!function_arr.length){
@@ -1437,6 +1450,18 @@ UTILITY FUNCTIONS
             function_arr.push({fn: callBackFn });
             this.arrayExecuter.execute(function_arr);
         }
+    }
+    
+    function write_script(_script_){
+        var scriptEl    = document.createElement("script");
+        scriptEl.type   = "text/javascript";
+        // scriptEl.src    = scriptURL.replace('~/', this.scene.dirPath);
+
+        // console.log('add_script: '+scriptURL);
+        
+        scriptEl.innerHTML = _script_;
+        
+        document.getElementsByTagName("head")[0].appendChild(scriptEl);
     }
     
     // pulled from https://software.intel.com/en-us/blogs/2010/05/22/dynamically-load-javascript-with-load-completion-notification
@@ -1502,6 +1527,7 @@ UTILITY FUNCTIONS
 
     var Scene = function (settingsJSON, parameters) {
         console.log('Scene');
+        console.log(settingsJSON);
         
         if(parameters && parameters.canvas){
             this.canvas = parameters.canvas;
@@ -1533,6 +1559,7 @@ UTILITY FUNCTIONS
         var data = this.data;
         
         if(data["settings"]["dirPath"])this.dirPath = data["settings"]["dirPath"];
+        // this.data.library = this.data.library || {};
         
         // this.gl =  this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
         var preserveDrawingBuffer = (this.data["settings"]["preserveDrawingBuffer"] && String(this.data["settings"]["preserveDrawingBuffer"]).toLowerCase() == "true")?true:false;
@@ -1641,6 +1668,7 @@ UTILITY FUNCTIONS
 
 
     // add section to Aero namespace
+    Aero = Aero || {};
     Aero.Scene = Scene;
 
 }(window));

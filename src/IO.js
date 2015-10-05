@@ -85,7 +85,12 @@
         for( s=0; s<_files.length; s++ ){
             if( !this.checkDependency(_files[s]) ){                
                 this.dependencies.push(_files[s]);
-                function_arr.push({ fn: add_script, vars: [_files[s]] });
+                console.log(_files[s]);
+                if(this.scene.data.library[_files[s]]){
+                    write_script(this.scene.data.library[_files[s]]);
+                } else {
+                    function_arr.push({ fn: add_script, vars: [_files[s]] });
+                }
             }
         }
         if(!function_arr.length){
@@ -94,6 +99,18 @@
             function_arr.push({fn: callBackFn });
             this.arrayExecuter.execute(function_arr);
         }
+    }
+    
+    function write_script(_script_){
+        var scriptEl    = document.createElement("script");
+        scriptEl.type   = "text/javascript";
+        // scriptEl.src    = scriptURL.replace('~/', this.scene.dirPath);
+
+        // console.log('add_script: '+scriptURL);
+        
+        scriptEl.innerHTML = _script_;
+        
+        document.getElementsByTagName("head")[0].appendChild(scriptEl);
     }
     
     // pulled from https://software.intel.com/en-us/blogs/2010/05/22/dynamically-load-javascript-with-load-completion-notification

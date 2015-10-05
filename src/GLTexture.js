@@ -75,6 +75,7 @@
     GLTexture.prototype.loadTexture = loadTexture;
     
     // add section to Aero namespace
+    Aero = Aero || {};
     Aero.GLTexture = GLTexture;
     
    

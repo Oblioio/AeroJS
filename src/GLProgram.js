@@ -27,11 +27,11 @@
         
         //shaders
         this.vShader = {
-            path: this.settings["vertexShader"].replace('~/', this.scene.dirPath)
+            path: this.settings["vertexShader"]
         }
 
         this.fShader = {
-            path: this.settings["fragmentShader"].replace('~/', this.scene.dirPath)
+            path: this.settings["fragmentShader"]
         }
     }
 
@@ -52,10 +52,16 @@
     function loadShader(type, callBackFn){
         console.log('loadShader: '+this[type].path);
         
-        Aero.utils.XHRLoader(this[type].path, function (data){
-                this[type].text = data;
-                callBackFn();
-            }.bind(this) );
+        if(this.scene.data.library[this[type].path]){
+            this[type].text = this.scene.data.library[this[type].path];
+            callBackFn();
+        } else {
+            Aero.utils.XHRLoader(String(this[type].path).replace('~/', this.scene.dirPath), function (data){
+                console.log(data);
+                    this[type].text = data;
+                    callBackFn();
+                }.bind(this) );
+        }
         
     }
 
@@ -203,6 +209,7 @@
     GLProgram.prototype.render = render;
 
     // add section to Aero namespace
+    Aero = Aero || {};
     Aero.GLProgram = GLProgram;
 
 

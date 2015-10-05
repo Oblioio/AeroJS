@@ -5,6 +5,7 @@
 
     var Scene = function (settingsJSON, parameters) {
         console.log('Scene');
+        console.log(settingsJSON);
         
         if(parameters && parameters.canvas){
             this.canvas = parameters.canvas;
@@ -36,6 +37,7 @@
         var data = this.data;
         
         if(data["settings"]["dirPath"])this.dirPath = data["settings"]["dirPath"];
+        // this.data.library = this.data.library || {};
         
         // this.gl =  this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
         var preserveDrawingBuffer = (this.data["settings"]["preserveDrawingBuffer"] && String(this.data["settings"]["preserveDrawingBuffer"]).toLowerCase() == "true")?true:false;
@@ -144,6 +146,7 @@
 
 
     // add section to Aero namespace
+    Aero = Aero || {};
     Aero.Scene = Scene;
 
 }(window));
