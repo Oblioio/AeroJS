@@ -16,8 +16,6 @@
         this.imgURL = (_settings.imgURL)?_settings.imgURL.replace('~/', this.scene.dirPath):null;
         this.texUnit = _settings.texUnit;
         console.log('GLTexture Init: '+this.texUnit);
-                
-        this.gl =  gl;
                     
         this.texture = texture;
         gl.activeTexture(gl["TEXTURE"+this.texUnit]);
@@ -53,7 +51,7 @@
     }
     
     function textureLoaded(){
-        var gl = this.gl,
+        var gl = this.scene.gl,
             texture = this.texture;
         
         gl.activeTexture(gl["TEXTURE"+this.texUnit]);
@@ -71,8 +69,23 @@
             this.onLoadComplete = null;
         }
     }
+    
+    function destroy(){
+        
+        var gl = this.scene.gl,
+            texture = this.texture;
+            
+        gl.deleteTexture(texture);
+        
+        this.texture = null;
+        this.scene = null;
+        this.settings = null;
+        this.imgURL = null;
+        this.texUnit = null;
+    }
         
     GLTexture.prototype.loadTexture = loadTexture;
+    GLTexture.prototype.destroy = destroy;
     
     // add section to Aero namespace
     Aero = Aero || {};

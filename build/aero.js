@@ -434,7 +434,6 @@ Aero.registerJSProgram = function(id, obj){
             callBackFn();
         } else {
             Aero.utils.XHRLoader(String(this[type].path).replace('~/', this.scene.dirPath), function (data){
-                console.log(data);
                     this[type].text = data;
                     callBackFn();
                 }.bind(this) );
@@ -490,12 +489,13 @@ Aero.registerJSProgram = function(id, obj){
             uniObj = uniformSettings[u];
             u_loc = gl.getUniformLocation(this.program, u);
             // console.log('u_loc: '+u+' | '+u_loc);
-            u_val = uniObj.val;
+            u_val = uniObj.val || null;
 
             switch(uniObj.type){
                 case "f":
                 case "1f":
                     u_fn = Aero.GLUploaders.uniform1f;
+                    if(!u_val)u_val = 0;
                     break;
                 // case "1fv":
                 //     u_fn = Aero.GLUploaders.uniform1fv;
@@ -509,6 +509,7 @@ Aero.registerJSProgram = function(id, obj){
 
                 case "2f":
                     u_fn = Aero.GLUploaders.uniform2f;
+                    if(!u_val)u_val = [0,0];
                     break;
                 // case "2fv":
                 //     u_fn = Aero.GLUploaders.uniform2fv;
@@ -522,16 +523,27 @@ Aero.registerJSProgram = function(id, obj){
 
                 case "3f":
                     u_fn = Aero.GLUploaders.uniform3f;
+                    if(!u_val)u_val = [0,0,0];
                     break;
                 case "3m":
                     u_fn = Aero.GLUploaders.uniformMatrix3fv;
+                    if(!u_val)u_val = [
+                        1,0,0,
+                        0,1,0,
+                        0,0,1];
                     break;
                     
                 case "4f":
                     u_fn = Aero.GLUploaders.uniform4f;
+                    if(!u_val)u_val = [0,0,0,0];
                     break;
                 case "4m":
                     u_fn = Aero.GLUploaders.uniformMatrix4fv;
+                    if(!u_val)u_val = [
+                        1,0,0,0,
+                        0,1,0,0,
+                        0,0,1,0,
+                        0,0,0,1];
                     break;
                     
                 case "t":
@@ -550,6 +562,20 @@ Aero.registerJSProgram = function(id, obj){
                 loc: u_loc,
                 fn: u_fn
             });
+        }
+        
+        // if u_resolution is not in JSON, but is in the program, we'll add it and update on resize
+        if(!this.inputs["u_resolution"]){
+            u_loc = gl.getUniformLocation(this.program, "u_resolution");
+            if(u_loc !== null){
+                this.inputs["u_resolution"] = [1,1]; // initial value
+                this.uniforms.push({
+                    id: "u_resolution",
+                    type: "2f",
+                    loc: u_loc,
+                    fn: Aero.GLUploaders.uniform2f
+                });
+            }
         }
 
         callBackFn();
@@ -580,10 +606,39 @@ Aero.registerJSProgram = function(id, obj){
 
         gl.drawArrays(gl[this.settings.renderMode], 0, 4);
     }
+    
+    function resize(w, h){
+        if(this.inputs["u_resolution"] && this.inputs["u_resolution"].length == 2){
+            this.inputs["u_resolution"] = [w,h];
+        }
+    }
+    
+    function destroy(){
+        var gl = this.gl;
+        gl.linkProgram(this.program);
+        // gl.detachShader(this.program, this.fShader.obj);
+        // gl.detachShader(this.program, this.fShader.obj);
+        gl.deleteShader(this.fShader.obj);
+        gl.deleteShader(this.fShader.obj);
+        this.fShader = null;
+        this.vShader = null;
+        
+        this.program = null;
+        this.inputs = null;
+        this.uniforms = null;
+        
+        this.arrayExecuter.destroy();
+        
+        this.scene = null;
+        this.gl =  null;
+        this.arrayExecuter =  null;
+    }
 
     GLProgram.prototype.init = init;
     GLProgram.prototype.updateUniforms = updateUniforms;
     GLProgram.prototype.render = render;
+    GLProgram.prototype.resize = resize;
+    GLProgram.prototype.destroy = destroy;
 
     // add section to Aero namespace
     Aero = Aero || {};
@@ -624,8 +679,6 @@ UTILITY FUNCTIONS
         this.imgURL = (_settings.imgURL)?_settings.imgURL.replace('~/', this.scene.dirPath):null;
         this.texUnit = _settings.texUnit;
         console.log('GLTexture Init: '+this.texUnit);
-                
-        this.gl =  gl;
                     
         this.texture = texture;
         gl.activeTexture(gl["TEXTURE"+this.texUnit]);
@@ -661,7 +714,7 @@ UTILITY FUNCTIONS
     }
     
     function textureLoaded(){
-        var gl = this.gl,
+        var gl = this.scene.gl,
             texture = this.texture;
         
         gl.activeTexture(gl["TEXTURE"+this.texUnit]);
@@ -679,8 +732,23 @@ UTILITY FUNCTIONS
             this.onLoadComplete = null;
         }
     }
+    
+    function destroy(){
+        
+        var gl = this.scene.gl,
+            texture = this.texture;
+            
+        gl.deleteTexture(texture);
+        
+        this.texture = null;
+        this.scene = null;
+        this.settings = null;
+        this.imgURL = null;
+        this.texUnit = null;
+    }
         
     GLTexture.prototype.loadTexture = loadTexture;
+    GLTexture.prototype.destroy = destroy;
     
     // add section to Aero namespace
     Aero = Aero || {};
@@ -748,8 +816,6 @@ UTILITY FUNCTIONS
     function init(){        
         this.gl = this.scene.gl;
         
-        this.setSize(this.scene.data["settings"]["dimensions"]["width"], this.scene.data["settings"]["dimensions"]["height"]);
-        
         //setup initial vars
         this.maxTextureUnits = this.scene.gl.getParameter(this.gl.MAX_TEXTURE_IMAGE_UNITS);
         this.nextTexUnit = 0;
@@ -777,6 +843,10 @@ UTILITY FUNCTIONS
         this.scene.canvas.height = h;
         
         this.gl.viewport(0, 0, Number(w), Number(h));
+        var nodes = this.scene.nodes;
+        for(var node in nodes){
+            if(nodes[node].resize)nodes[node].resize(w, h);
+        }
     }    
     
     function createRenderList(callBackFn){
@@ -1257,11 +1327,12 @@ UTILITY FUNCTIONS
     }
     
     function render(){
-        
         var gl = this.gl,
             nodeObj,
             d;
-
+            
+        if(!this.gl)return;
+        
         for(var p=0; p<this.renderList.length; p++){
             nodeObj = this.renderList[p];
 
@@ -1328,6 +1399,40 @@ UTILITY FUNCTIONS
         if(this.autoRender)window.requestAnimationFrame(render.bind(this));
     }
     
+    function destroy(){
+        
+        var gl = this.scene.gl,
+            numTextureUnits = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
+        
+        // delete all texture units
+        for (var unit = 0; unit < numTextureUnits; ++unit) {
+          gl.activeTexture(gl.TEXTURE0 + unit);
+          gl.bindTexture(gl.TEXTURE_2D, null);
+          gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+        }
+        
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                
+        for(var b=0; b<this.frameBuffers.length; b++){            
+            gl.deleteRenderbuffer(this.frameBuffers[b].renderBuffer);
+            gl.deleteFramebuffer(this.frameBuffers[b].frameBuffer);
+            gl.deleteTexture(this.frameBuffers[b].texture);
+            
+            this.frameBuffers[b] = null;
+        }
+        
+        this.arrayExecuter.destroy();
+        
+        this.scene = null;
+        this.gl = null;
+        this.arrayExecuter = null;
+        this.renderList = null;
+        this.frameBuffers = null;
+    }
+    
     Renderer.prototype.init = init;
     Renderer.prototype.update = update;
     Renderer.prototype.setSize = setSize;
@@ -1342,6 +1447,8 @@ UTILITY FUNCTIONS
     Renderer.prototype.useCustomVertexBuffer = useCustomVertexBuffer;
     Renderer.prototype.createCustomVertexBuffer = createCustomVertexBuffer;
     Renderer.prototype.updateCustomVertexBuffer = updateCustomVertexBuffer;
+    
+    Renderer.prototype.destroy = destroy;
     
     // add section to Aero namespace
     Aero = Aero || {};
@@ -1509,10 +1616,20 @@ UTILITY FUNCTIONS
         }
     }
     
+    function destroy(){        
+        this.arrayExecuter.destroy();
+        
+        this.scene = null;
+        this.arrayExecuter = null;
+        this.dependencies = null;
+    }
+    
     IO.prototype.loadData = loadData;
     IO.prototype.checkDependency = checkDependency;
     IO.prototype.loadDependencies = loadDependencies;
     IO.prototype.buildData = buildData;
+    
+    IO.prototype.destroy = destroy;
     
     // add section to Aero namespace
     Aero = Aero || {};
@@ -1536,7 +1653,6 @@ UTILITY FUNCTIONS
         }
         
         this.arrayExecuter = new Aero.utils.ArrayExecuter(this);
-        this.stepComplete = this.arrayExecuter.stepComplete.bind(this.arrayExecuter);
         this.renderer = new Aero.Renderer(this);
         this.io = new Aero.IO(this);
         
@@ -1559,7 +1675,7 @@ UTILITY FUNCTIONS
         var data = this.data;
         
         if(data["settings"]["dirPath"])this.dirPath = data["settings"]["dirPath"];
-        // this.data.library = this.data.library || {};
+        this.data.library = this.data.library || {};
         
         // this.gl =  this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
         var preserveDrawingBuffer = (this.data["settings"]["preserveDrawingBuffer"] && String(this.data["settings"]["preserveDrawingBuffer"]).toLowerCase() == "true")?true:false;
@@ -1569,7 +1685,6 @@ UTILITY FUNCTIONS
         this.renderer.init();
         this.io.buildData(this.data, callbackFn);
         
-        // this.arrayExecuter.stepComplete();
     }
     
     function initRenderer(callbackFn){
@@ -1577,6 +1692,10 @@ UTILITY FUNCTIONS
     }
     
     function initComplete(){
+        
+        // set initial size        
+        this.renderer.setSize(this.data["settings"]["dimensions"]["width"], this.data["settings"]["dimensions"]["height"]);
+        
         // call initial render
         if(this.data["settings"]["autoRender"])this.renderer.start();
         
@@ -1649,22 +1768,41 @@ UTILITY FUNCTIONS
         progObj.init(callbackFn);
     }
     
-    
-    // convenience functions
-    
-    Scene.prototype.render = function(){
-        this.renderer.render();        
+    function destroy(){
+        // need to destroy all nodes.
+        for(var node in this.nodes){
+            if(this.nodes[node].destroy)this.nodes[node].destroy();
+        }
+        
+        this.nodes = null;
+        
+        this.arrayExecuter.destroy();
+        this.renderer.destroy();
+        this.io.destroy();
+        
+        this.arrayExecuter = null;
+        this.renderer = null;
+        this.io = null;
+        
+        this.onReady = null;
+        this.canvas = null;
+        this.data = null;
+        
+        this.gl = null;
     }
+    
 
     Scene.prototype.checkNodeId = checkNodeId;
     Scene.prototype.createTexture = createTexture;
     Scene.prototype.createJSProgram = createJSProgram;
-    Scene.prototype.createGLProgram = createGLProgram;
-    // Scene.prototype.useStandardVertexBuffer = useStandardVertexBuffer;
-    // Scene.prototype.useCustomVertexBuffer = useCustomVertexBuffer;
-    // Scene.prototype.createCustomVertexBuffer = createCustomVertexBuffer;
-    // Scene.prototype.updateCustomVertexBuffer = updateCustomVertexBuffer;
-
+    Scene.prototype.createGLProgram = createGLProgram;    
+    Scene.prototype.destroy = destroy;
+    
+    // convenience functions
+    
+    Scene.prototype.render = function(){
+        this.renderer.render();
+    }
 
 
     // add section to Aero namespace

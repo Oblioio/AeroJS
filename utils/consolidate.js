@@ -14,14 +14,21 @@ fs.readFile(process.argv[2], function (err, data) {
     jsonData.library = jsonData.library || {};
     dirPath = (process.argv[2].indexOf("/") >= 0)?process.argv[2].substring(0, process.argv[2].lastIndexOf("/")+1):"";
         
-    var item, i, d, filepath;
+    var item, i, d, filepath,
+        jsPrograms = jsonData.jsPrograms || jsonData.JSPrograms
+        glPrograms = jsonData.glPrograms || jsonData.GLPrograms;
     
-    for(item in jsonData.jsPrograms)nodes.push(jsonData.jsPrograms[item]);
-    for(item in jsonData.glPrograms)nodes.push(jsonData.glPrograms[item]);
+    for(item in jsPrograms)nodes.push(jsPrograms[item]);
+    for(item in glPrograms)nodes.push(glPrograms[item]);
     
+    console.log(nodes);
+    // console.log(jsonData.jsPrograms);
+    // console.log(jsonData.glPrograms);
+
     for(i=0; i<nodes.length; i++){
         if(nodes[i].dependencies && nodes[i].dependencies.length){
             for(d=0; d<nodes[i].dependencies.length; d++){
+                console.log('dependency: '+nodes[i].dependencies[d]);
                 filepath = nodes[i].dependencies[d];
                 if(!jsonData.library[filepath]) 
                     jsonData.library[filepath] = fs.readFileSync(String(filepath).replace('~/', dirPath)).toString();

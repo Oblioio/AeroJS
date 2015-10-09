@@ -57,7 +57,6 @@
             callBackFn();
         } else {
             Aero.utils.XHRLoader(String(this[type].path).replace('~/', this.scene.dirPath), function (data){
-                console.log(data);
                     this[type].text = data;
                     callBackFn();
                 }.bind(this) );
@@ -113,12 +112,13 @@
             uniObj = uniformSettings[u];
             u_loc = gl.getUniformLocation(this.program, u);
             // console.log('u_loc: '+u+' | '+u_loc);
-            u_val = uniObj.val;
+            u_val = uniObj.val || null;
 
             switch(uniObj.type){
                 case "f":
                 case "1f":
                     u_fn = Aero.GLUploaders.uniform1f;
+                    if(!u_val)u_val = 0;
                     break;
                 // case "1fv":
                 //     u_fn = Aero.GLUploaders.uniform1fv;
@@ -132,6 +132,7 @@
 
                 case "2f":
                     u_fn = Aero.GLUploaders.uniform2f;
+                    if(!u_val)u_val = [0,0];
                     break;
                 // case "2fv":
                 //     u_fn = Aero.GLUploaders.uniform2fv;
@@ -145,16 +146,27 @@
 
                 case "3f":
                     u_fn = Aero.GLUploaders.uniform3f;
+                    if(!u_val)u_val = [0,0,0];
                     break;
                 case "3m":
                     u_fn = Aero.GLUploaders.uniformMatrix3fv;
+                    if(!u_val)u_val = [
+                        1,0,0,
+                        0,1,0,
+                        0,0,1];
                     break;
                     
                 case "4f":
                     u_fn = Aero.GLUploaders.uniform4f;
+                    if(!u_val)u_val = [0,0,0,0];
                     break;
                 case "4m":
                     u_fn = Aero.GLUploaders.uniformMatrix4fv;
+                    if(!u_val)u_val = [
+                        1,0,0,0,
+                        0,1,0,0,
+                        0,0,1,0,
+                        0,0,0,1];
                     break;
                     
                 case "t":
@@ -173,6 +185,20 @@
                 loc: u_loc,
                 fn: u_fn
             });
+        }
+        
+        // if u_resolution is not in JSON, but is in the program, we'll add it and update on resize
+        if(!this.inputs["u_resolution"]){
+            u_loc = gl.getUniformLocation(this.program, "u_resolution");
+            if(u_loc !== null){
+                this.inputs["u_resolution"] = [1,1]; // initial value
+                this.uniforms.push({
+                    id: "u_resolution",
+                    type: "2f",
+                    loc: u_loc,
+                    fn: Aero.GLUploaders.uniform2f
+                });
+            }
         }
 
         callBackFn();
@@ -203,10 +229,39 @@
 
         gl.drawArrays(gl[this.settings.renderMode], 0, 4);
     }
+    
+    function resize(w, h){
+        if(this.inputs["u_resolution"] && this.inputs["u_resolution"].length == 2){
+            this.inputs["u_resolution"] = [w,h];
+        }
+    }
+    
+    function destroy(){
+        var gl = this.gl;
+        gl.linkProgram(this.program);
+        // gl.detachShader(this.program, this.fShader.obj);
+        // gl.detachShader(this.program, this.fShader.obj);
+        gl.deleteShader(this.fShader.obj);
+        gl.deleteShader(this.fShader.obj);
+        this.fShader = null;
+        this.vShader = null;
+        
+        this.program = null;
+        this.inputs = null;
+        this.uniforms = null;
+        
+        this.arrayExecuter.destroy();
+        
+        this.scene = null;
+        this.gl =  null;
+        this.arrayExecuter =  null;
+    }
 
     GLProgram.prototype.init = init;
     GLProgram.prototype.updateUniforms = updateUniforms;
     GLProgram.prototype.render = render;
+    GLProgram.prototype.resize = resize;
+    GLProgram.prototype.destroy = destroy;
 
     // add section to Aero namespace
     Aero = Aero || {};

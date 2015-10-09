@@ -14,7 +14,6 @@
         }
         
         this.arrayExecuter = new Aero.utils.ArrayExecuter(this);
-        this.stepComplete = this.arrayExecuter.stepComplete.bind(this.arrayExecuter);
         this.renderer = new Aero.Renderer(this);
         this.io = new Aero.IO(this);
         
@@ -37,7 +36,7 @@
         var data = this.data;
         
         if(data["settings"]["dirPath"])this.dirPath = data["settings"]["dirPath"];
-        // this.data.library = this.data.library || {};
+        this.data.library = this.data.library || {};
         
         // this.gl =  this.canvas.getContext("webgl") || this.canvas.getContext("experimental-webgl");
         var preserveDrawingBuffer = (this.data["settings"]["preserveDrawingBuffer"] && String(this.data["settings"]["preserveDrawingBuffer"]).toLowerCase() == "true")?true:false;
@@ -47,7 +46,6 @@
         this.renderer.init();
         this.io.buildData(this.data, callbackFn);
         
-        // this.arrayExecuter.stepComplete();
     }
     
     function initRenderer(callbackFn){
@@ -55,6 +53,10 @@
     }
     
     function initComplete(){
+        
+        // set initial size        
+        this.renderer.setSize(this.data["settings"]["dimensions"]["width"], this.data["settings"]["dimensions"]["height"]);
+        
         // call initial render
         if(this.data["settings"]["autoRender"])this.renderer.start();
         
@@ -127,22 +129,41 @@
         progObj.init(callbackFn);
     }
     
-    
-    // convenience functions
-    
-    Scene.prototype.render = function(){
-        this.renderer.render();        
+    function destroy(){
+        // need to destroy all nodes.
+        for(var node in this.nodes){
+            if(this.nodes[node].destroy)this.nodes[node].destroy();
+        }
+        
+        this.nodes = null;
+        
+        this.arrayExecuter.destroy();
+        this.renderer.destroy();
+        this.io.destroy();
+        
+        this.arrayExecuter = null;
+        this.renderer = null;
+        this.io = null;
+        
+        this.onReady = null;
+        this.canvas = null;
+        this.data = null;
+        
+        this.gl = null;
     }
+    
 
     Scene.prototype.checkNodeId = checkNodeId;
     Scene.prototype.createTexture = createTexture;
     Scene.prototype.createJSProgram = createJSProgram;
-    Scene.prototype.createGLProgram = createGLProgram;
-    // Scene.prototype.useStandardVertexBuffer = useStandardVertexBuffer;
-    // Scene.prototype.useCustomVertexBuffer = useCustomVertexBuffer;
-    // Scene.prototype.createCustomVertexBuffer = createCustomVertexBuffer;
-    // Scene.prototype.updateCustomVertexBuffer = updateCustomVertexBuffer;
-
+    Scene.prototype.createGLProgram = createGLProgram;    
+    Scene.prototype.destroy = destroy;
+    
+    // convenience functions
+    
+    Scene.prototype.render = function(){
+        this.renderer.render();
+    }
 
 
     // add section to Aero namespace

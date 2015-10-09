@@ -158,10 +158,20 @@
         }
     }
     
+    function destroy(){        
+        this.arrayExecuter.destroy();
+        
+        this.scene = null;
+        this.arrayExecuter = null;
+        this.dependencies = null;
+    }
+    
     IO.prototype.loadData = loadData;
     IO.prototype.checkDependency = checkDependency;
     IO.prototype.loadDependencies = loadDependencies;
     IO.prototype.buildData = buildData;
+    
+    IO.prototype.destroy = destroy;
     
     // add section to Aero namespace
     Aero = Aero || {};

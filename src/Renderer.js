@@ -12,8 +12,6 @@
     function init(){        
         this.gl = this.scene.gl;
         
-        this.setSize(this.scene.data["settings"]["dimensions"]["width"], this.scene.data["settings"]["dimensions"]["height"]);
-        
         //setup initial vars
         this.maxTextureUnits = this.scene.gl.getParameter(this.gl.MAX_TEXTURE_IMAGE_UNITS);
         this.nextTexUnit = 0;
@@ -41,6 +39,10 @@
         this.scene.canvas.height = h;
         
         this.gl.viewport(0, 0, Number(w), Number(h));
+        var nodes = this.scene.nodes;
+        for(var node in nodes){
+            if(nodes[node].resize)nodes[node].resize(w, h);
+        }
     }    
     
     function createRenderList(callBackFn){
@@ -521,11 +523,12 @@
     }
     
     function render(){
-        
         var gl = this.gl,
             nodeObj,
             d;
-
+            
+        if(!this.gl)return;
+        
         for(var p=0; p<this.renderList.length; p++){
             nodeObj = this.renderList[p];
 
@@ -592,6 +595,40 @@
         if(this.autoRender)window.requestAnimationFrame(render.bind(this));
     }
     
+    function destroy(){
+        
+        var gl = this.scene.gl,
+            numTextureUnits = gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS);
+        
+        // delete all texture units
+        for (var unit = 0; unit < numTextureUnits; ++unit) {
+          gl.activeTexture(gl.TEXTURE0 + unit);
+          gl.bindTexture(gl.TEXTURE_2D, null);
+          gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+        }
+        
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                
+        for(var b=0; b<this.frameBuffers.length; b++){            
+            gl.deleteRenderbuffer(this.frameBuffers[b].renderBuffer);
+            gl.deleteFramebuffer(this.frameBuffers[b].frameBuffer);
+            gl.deleteTexture(this.frameBuffers[b].texture);
+            
+            this.frameBuffers[b] = null;
+        }
+        
+        this.arrayExecuter.destroy();
+        
+        this.scene = null;
+        this.gl = null;
+        this.arrayExecuter = null;
+        this.renderList = null;
+        this.frameBuffers = null;
+    }
+    
     Renderer.prototype.init = init;
     Renderer.prototype.update = update;
     Renderer.prototype.setSize = setSize;
@@ -606,6 +643,8 @@
     Renderer.prototype.useCustomVertexBuffer = useCustomVertexBuffer;
     Renderer.prototype.createCustomVertexBuffer = createCustomVertexBuffer;
     Renderer.prototype.updateCustomVertexBuffer = updateCustomVertexBuffer;
+    
+    Renderer.prototype.destroy = destroy;
     
     // add section to Aero namespace
     Aero = Aero || {};
