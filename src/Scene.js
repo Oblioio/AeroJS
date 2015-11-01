@@ -148,50 +148,50 @@
     }
     
     
-    // function createConnection(sourceId, sourceVar, destId, destVar){
-    //     // confirm the connection is valid
-    //     if(!sourceId || !destId)return; // no id passed
-    //     if(!this.nodes.hasOwnProperty(sourceId))return; // source doesn't exist
-    //     if(!this.nodes.hasOwnProperty(destId) && String(destId).toLowerCase() != 'canvas')return; // dest doesn't exist
+    function createConnection(sourceId, sourceVar, destId, destVar){
+        // confirm the connection is valid
+        if(!sourceId || !destId)return; // no id passed
+        if(!this.nodes.hasOwnProperty(sourceId))return; // source doesn't exist
+        if(!this.nodes.hasOwnProperty(destId) && String(destId).toLowerCase() != 'canvas')return; // dest doesn't exist
         
-    //     // add to connections list
-    //     this.connections.push({
-    //         "id": this._idCount++,
-    //         "source": 
-    //             {
-    //                 "id": sourceId,
-    //                 "var": sourceVar
-    //             },
-    //         "dest": 
-    //             {
-    //                 "id": destId,
-    //                 "var": destVar
-    //             }
-    //     });
+        // add to connections list
+        this.connections.push({
+            "id": this._idCount++,
+            "source": 
+                {
+                    "id": sourceId,
+                    "var": sourceVar
+                },
+            "dest": 
+                {
+                    "id": destId,
+                    "var": destVar
+                }
+        });
         
-    //     this.needsUpdate = true;
-    // }
+        this.needsUpdate = true;
+    }
     
-    // function deleteConnection(connectionId){
-    //     for(var i=0; i<this.connections.length; i++){
-    //         if(this.connections[i]['id'] == connectionId){
-    //             this.connections.splice(i, 1);
-    //             this.needsUpdate = true;
-    //             return;
-    //         }
-    //     }
-    // }
+    function deleteConnection(connectionId){
+        for(var i=0; i<this.connections.length; i++){
+            if(this.connections[i]['id'] == connectionId){
+                this.connections.splice(i, 1);
+                this.needsUpdate = true;
+                return;
+            }
+        }
+    }
     
-    // function connectionSearch(dir, id){
-    //     // this loops through all connections and returns all that have the
-    //     // specified ID in the specified direction.  dir is either "source" or "dest"
+    function connectionSearch(dir, id){
+        // this loops through all connections and returns all that have the
+        // specified ID in the specified direction.  dir is either "source" or "dest"
 
-    //     var results = [];
-    //     for(var i=0; i<this.connections.length; i++){
-    //         if(this.connections[i][dir]['id'].toLowerCase() == String(id).toLowerCase())results.push(this.connections[i]);
-    //     }
-    //     return results;
-    // }
+        var results = [];
+        for(var i=0; i<this.connections.length; i++){
+            if(this.connections[i][dir]['id'].toLowerCase() == String(id).toLowerCase())results.push(this.connections[i]);
+        }
+        return results;
+    }
 
     
     function destroy(){

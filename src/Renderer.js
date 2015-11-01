@@ -24,7 +24,7 @@
         
         var function_arr =  [
                 { fn: createRenderList },
-                { fn: createFrameBuffers },
+                // { fn: createFrameBuffers },
                 { fn: initVertexBuffers },
                 { fn: callBackFn }
             ];
@@ -68,6 +68,7 @@
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             
         }
+        
     }
         
     function createRenderList(callBackFn){
@@ -203,9 +204,9 @@
         }
         console.log(renderOrderStr);
 
-        callBackFn();
+        // callBackFn();
         
-        // createFrameBuffers.call(this, callBackFn);
+        createFrameBuffers.call(this, callBackFn);
     }
 
     function connectionSearch(connections, dir, id){
