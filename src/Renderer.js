@@ -43,6 +43,31 @@
         for(var node in nodes){
             if(nodes[node].resize)nodes[node].resize(w, h);
         }
+        var gl = this.gl;
+        
+        // need to resize frame buffers
+        for(var i=0; i<this.frameBuffers.length; i++){
+            if(this.frameBuffers[i].size !== "auto")continue; // only resize those that are autosized
+            this.frameBuffers[i].width = w;
+            this.frameBuffers[i].height = h;
+            
+            gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffers[i].frameBuffer);
+            gl.bindTexture(gl.TEXTURE_2D, this.frameBuffers[i].texture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+            // create depth buffer, not sure we need this actually
+            gl.bindRenderbuffer(gl.RENDERBUFFER, this.frameBuffers[i].renderBuffer);
+            gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
+
+            // attach texture and depth buffer to frame buffer
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.frameBuffers[i].texture, 0);
+            gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.frameBuffers[i].renderBuffer);
+
+            // unbind the texture and buffers
+            gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            
+        }
     }
         
     function createRenderList(callBackFn){
@@ -338,6 +363,7 @@
             rttFramebuffer,
             rttTexture,
             renderbuffer = gl.createRenderbuffer(),
+            size = "auto",
             bufferWidth = this.scene.canvas.width,
             bufferHeight = this.scene.canvas.height,
             texUnit = this.getNextTexUnit();
@@ -376,6 +402,7 @@
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         return {
+            size: size,
             frameBuffer: rttFramebuffer,
             texture: rttTexture,
             renderBuffer: renderbuffer,
