@@ -615,9 +615,7 @@ Aero.registerJSProgram = function(id, obj){
     
     function destroy(){
         var gl = this.gl;
-        gl.linkProgram(this.program);
-        // gl.detachShader(this.program, this.fShader.obj);
-        // gl.detachShader(this.program, this.fShader.obj);
+        
         gl.deleteShader(this.fShader.obj);
         gl.deleteShader(this.fShader.obj);
         this.fShader = null;
@@ -847,8 +845,8 @@ UTILITY FUNCTIONS
         for(var node in nodes){
             if(nodes[node].resize)nodes[node].resize(w, h);
         }
-    }    
-    
+    }
+        
     function createRenderList(callBackFn){
         console.log('/////////////////  createRenderList  /////////////////');
         // figure out the render chains.
@@ -869,8 +867,7 @@ UTILITY FUNCTIONS
             highestIndex,
             s, d;
 
-        // console.log('set the nodes to draw to canvas');
-        //set the nodes to draw to canvas
+        // set the nodes to draw to canvas
         for(r=0; r<nodesToCheck.length; r++){
             connectedNode = getConnectedNode.call(this, nodesToCheck[r], 'source');
             connectedNode.drawToCanvas = true;
@@ -879,14 +876,15 @@ UTILITY FUNCTIONS
         this.renderList = [];
 
         // Everytime I check a node I will add it to the render list
-        // I check what dependencies it has, and what othe nodes depend on it
+        // I check what dependencies it has, and what other nodes depend on it
+        
+        // To determine where in the render list it should go we need to:
         // Check the index of all nodes that depends on this node and remember the lowest value
         // Check the index of all nodes it depends on and remember the highest value
         // place it on the render at the highest value that meets both requirements
 
         // finally add any nodes that depend on the current node to the beginning of the toCheck array
 
-        // console.log('this will loop as long as there more connections to add');
         //this will loop as long as there more connections to add
         while(nodesToCheck.length){
             // console.log('loop begin: '+nodesToCheck.length);
@@ -983,6 +981,8 @@ UTILITY FUNCTIONS
         console.log(renderOrderStr);
 
         callBackFn();
+        
+        // createFrameBuffers.call(this, callBackFn);
     }
 
     function connectionSearch(connections, dir, id){
@@ -1196,6 +1196,7 @@ UTILITY FUNCTIONS
     }
     
     function initVertexBuffers(callBackFn){
+        console.log('initVertexBuffers');
         var gl = this.gl;
 
         var verticesTexCoords = new Float32Array([
@@ -1332,6 +1333,12 @@ UTILITY FUNCTIONS
             d;
             
         if(!this.gl)return;
+        
+        // if(this.scene.needsUpdate){
+        //     this.scene.needsUpdate = false;
+        //     createRenderList.call(this, render.bind(this));
+        //     return;
+        // }
         
         for(var p=0; p<this.renderList.length; p++){
             nodeObj = this.renderList[p];
@@ -1475,7 +1482,7 @@ UTILITY FUNCTIONS
                 this.scene.dirPath = (settingsJSON.indexOf("/") >= 0)?settingsJSON.substring(0, settingsJSON.lastIndexOf("/")+1):"";
                 this.scene.data = JSON.parse(data);
                 callBackFn();
-            }.bind(this));            
+            }.bind(this));
             
         } else {
             // settingsJSON is obj
@@ -1659,6 +1666,12 @@ UTILITY FUNCTIONS
         this.onReady = (parameters && parameters.onReady)?parameters.onReady:null;
         
         this.nodes = {};
+        this.connections = [];
+        // this variable specifies whether the render list needs to be updated
+        // set to true whenever there are changes in node connections
+        this.needsUpdate = false; 
+        
+        this._idCount = 0;
 
         var function_arr =  [
                 { fn: this.io.loadData, scope:this.io, vars: [settingsJSON] },
@@ -1722,6 +1735,10 @@ UTILITY FUNCTIONS
         texObj.loadTexture(callbackFn);
     }
         
+    function deleteTexture(id){
+        
+    }
+    
     function createJSProgram(id, obj, callbackFn){
         if(!this.checkNodeId(id))return;
         
@@ -1756,6 +1773,10 @@ UTILITY FUNCTIONS
         
     }    
     
+    function deleteJSProgram(id){
+        
+    }
+    
     function createGLProgram(id, obj, callbackFn){
         if(!this.checkNodeId(id))return;
                 
@@ -1767,6 +1788,57 @@ UTILITY FUNCTIONS
         progObj.dependents = []; //this will contain nodes that rely on this node to run first
         progObj.init(callbackFn);
     }
+    
+    function deleteGLProgram(id){
+        
+    }
+    
+    
+    // function createConnection(sourceId, sourceVar, destId, destVar){
+    //     // confirm the connection is valid
+    //     if(!sourceId || !destId)return; // no id passed
+    //     if(!this.nodes.hasOwnProperty(sourceId))return; // source doesn't exist
+    //     if(!this.nodes.hasOwnProperty(destId) && String(destId).toLowerCase() != 'canvas')return; // dest doesn't exist
+        
+    //     // add to connections list
+    //     this.connections.push({
+    //         "id": this._idCount++,
+    //         "source": 
+    //             {
+    //                 "id": sourceId,
+    //                 "var": sourceVar
+    //             },
+    //         "dest": 
+    //             {
+    //                 "id": destId,
+    //                 "var": destVar
+    //             }
+    //     });
+        
+    //     this.needsUpdate = true;
+    // }
+    
+    // function deleteConnection(connectionId){
+    //     for(var i=0; i<this.connections.length; i++){
+    //         if(this.connections[i]['id'] == connectionId){
+    //             this.connections.splice(i, 1);
+    //             this.needsUpdate = true;
+    //             return;
+    //         }
+    //     }
+    // }
+    
+    // function connectionSearch(dir, id){
+    //     // this loops through all connections and returns all that have the
+    //     // specified ID in the specified direction.  dir is either "source" or "dest"
+
+    //     var results = [];
+    //     for(var i=0; i<this.connections.length; i++){
+    //         if(this.connections[i][dir]['id'].toLowerCase() == String(id).toLowerCase())results.push(this.connections[i]);
+    //     }
+    //     return results;
+    // }
+
     
     function destroy(){
         // need to destroy all nodes.

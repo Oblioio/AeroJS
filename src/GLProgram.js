@@ -238,9 +238,7 @@
     
     function destroy(){
         var gl = this.gl;
-        gl.linkProgram(this.program);
-        // gl.detachShader(this.program, this.fShader.obj);
-        // gl.detachShader(this.program, this.fShader.obj);
+        
         gl.deleteShader(this.fShader.obj);
         gl.deleteShader(this.fShader.obj);
         this.fShader = null;

@@ -43,8 +43,8 @@
         for(var node in nodes){
             if(nodes[node].resize)nodes[node].resize(w, h);
         }
-    }    
-    
+    }
+        
     function createRenderList(callBackFn){
         console.log('/////////////////  createRenderList  /////////////////');
         // figure out the render chains.
@@ -65,8 +65,7 @@
             highestIndex,
             s, d;
 
-        // console.log('set the nodes to draw to canvas');
-        //set the nodes to draw to canvas
+        // set the nodes to draw to canvas
         for(r=0; r<nodesToCheck.length; r++){
             connectedNode = getConnectedNode.call(this, nodesToCheck[r], 'source');
             connectedNode.drawToCanvas = true;
@@ -75,14 +74,15 @@
         this.renderList = [];
 
         // Everytime I check a node I will add it to the render list
-        // I check what dependencies it has, and what othe nodes depend on it
+        // I check what dependencies it has, and what other nodes depend on it
+        
+        // To determine where in the render list it should go we need to:
         // Check the index of all nodes that depends on this node and remember the lowest value
         // Check the index of all nodes it depends on and remember the highest value
         // place it on the render at the highest value that meets both requirements
 
         // finally add any nodes that depend on the current node to the beginning of the toCheck array
 
-        // console.log('this will loop as long as there more connections to add');
         //this will loop as long as there more connections to add
         while(nodesToCheck.length){
             // console.log('loop begin: '+nodesToCheck.length);
@@ -179,6 +179,8 @@
         console.log(renderOrderStr);
 
         callBackFn();
+        
+        // createFrameBuffers.call(this, callBackFn);
     }
 
     function connectionSearch(connections, dir, id){
@@ -392,6 +394,7 @@
     }
     
     function initVertexBuffers(callBackFn){
+        console.log('initVertexBuffers');
         var gl = this.gl;
 
         var verticesTexCoords = new Float32Array([
@@ -528,6 +531,12 @@
             d;
             
         if(!this.gl)return;
+        
+        // if(this.scene.needsUpdate){
+        //     this.scene.needsUpdate = false;
+        //     createRenderList.call(this, render.bind(this));
+        //     return;
+        // }
         
         for(var p=0; p<this.renderList.length; p++){
             nodeObj = this.renderList[p];

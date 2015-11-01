@@ -17,7 +17,7 @@
                 this.scene.dirPath = (settingsJSON.indexOf("/") >= 0)?settingsJSON.substring(0, settingsJSON.lastIndexOf("/")+1):"";
                 this.scene.data = JSON.parse(data);
                 callBackFn();
-            }.bind(this));            
+            }.bind(this));
             
         } else {
             // settingsJSON is obj

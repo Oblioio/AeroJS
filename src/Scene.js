@@ -20,6 +20,12 @@
         this.onReady = (parameters && parameters.onReady)?parameters.onReady:null;
         
         this.nodes = {};
+        this.connections = [];
+        // this variable specifies whether the render list needs to be updated
+        // set to true whenever there are changes in node connections
+        this.needsUpdate = false; 
+        
+        this._idCount = 0;
 
         var function_arr =  [
                 { fn: this.io.loadData, scope:this.io, vars: [settingsJSON] },
@@ -83,6 +89,10 @@
         texObj.loadTexture(callbackFn);
     }
         
+    function deleteTexture(id){
+        
+    }
+    
     function createJSProgram(id, obj, callbackFn){
         if(!this.checkNodeId(id))return;
         
@@ -117,6 +127,10 @@
         
     }    
     
+    function deleteJSProgram(id){
+        
+    }
+    
     function createGLProgram(id, obj, callbackFn){
         if(!this.checkNodeId(id))return;
                 
@@ -128,6 +142,57 @@
         progObj.dependents = []; //this will contain nodes that rely on this node to run first
         progObj.init(callbackFn);
     }
+    
+    function deleteGLProgram(id){
+        
+    }
+    
+    
+    // function createConnection(sourceId, sourceVar, destId, destVar){
+    //     // confirm the connection is valid
+    //     if(!sourceId || !destId)return; // no id passed
+    //     if(!this.nodes.hasOwnProperty(sourceId))return; // source doesn't exist
+    //     if(!this.nodes.hasOwnProperty(destId) && String(destId).toLowerCase() != 'canvas')return; // dest doesn't exist
+        
+    //     // add to connections list
+    //     this.connections.push({
+    //         "id": this._idCount++,
+    //         "source": 
+    //             {
+    //                 "id": sourceId,
+    //                 "var": sourceVar
+    //             },
+    //         "dest": 
+    //             {
+    //                 "id": destId,
+    //                 "var": destVar
+    //             }
+    //     });
+        
+    //     this.needsUpdate = true;
+    // }
+    
+    // function deleteConnection(connectionId){
+    //     for(var i=0; i<this.connections.length; i++){
+    //         if(this.connections[i]['id'] == connectionId){
+    //             this.connections.splice(i, 1);
+    //             this.needsUpdate = true;
+    //             return;
+    //         }
+    //     }
+    // }
+    
+    // function connectionSearch(dir, id){
+    //     // this loops through all connections and returns all that have the
+    //     // specified ID in the specified direction.  dir is either "source" or "dest"
+
+    //     var results = [];
+    //     for(var i=0; i<this.connections.length; i++){
+    //         if(this.connections[i][dir]['id'].toLowerCase() == String(id).toLowerCase())results.push(this.connections[i]);
+    //     }
+    //     return results;
+    // }
+
     
     function destroy(){
         // need to destroy all nodes.
