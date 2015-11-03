@@ -393,6 +393,7 @@ Aero.registerJSProgram = function(id, obj){
         this.gl =  this.scene.gl;
         // default settings
         this.settings = {
+                defines: [],
                 renderMode: "TRIANGLE_STRIP"
             };
         
@@ -417,8 +418,7 @@ Aero.registerJSProgram = function(id, obj){
         var function_arr =  [
                 { fn: loadShader, vars: 'vShader' },
                 { fn: loadShader, vars: 'fShader' },
-                { fn: createProgram },
-                { fn: setupUniforms },
+                { fn: compile },
                 { fn: callBackFn }
             ];
 
@@ -441,21 +441,26 @@ Aero.registerJSProgram = function(id, obj){
         
     }
 
-    function createProgram(callBackFn){
-        console.log('createProgram');
+    function compile(callBackFn){
+        console.log('compile program');
 
-        var gl = this.gl;
-
+        var gl = this.gl,
+            defines = "";        
+        
+        for(var i=0; i<this.settings.defines.length; i++){
+            defines += "#define "+this.settings.defines[i]+"\n";
+        }
+        
         //create fragment shader
         var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-        gl.shaderSource(fragmentShader, this.fShader.text);
+        gl.shaderSource(fragmentShader, defines+this.fShader.text);
         gl.compileShader(fragmentShader);
         if(!checkCompile.call(this, gl, "2d-fragment-shader", fragmentShader))return;
         this.fShader.obj = fragmentShader;
 
         //create vertex shader
         var vertexShader = gl.createShader(gl.VERTEX_SHADER);
-        gl.shaderSource(vertexShader, this.vShader.text);
+        gl.shaderSource(vertexShader, defines+this.vShader.text);
         gl.compileShader(vertexShader);
         if(!checkCompile.call(this, gl, "2d-vertex-shader", vertexShader))return;
         this.vShader.obj = vertexShader;
@@ -470,7 +475,27 @@ Aero.registerJSProgram = function(id, obj){
         this.program = program;
         gl.program = program;
 
-        callBackFn();
+        setupUniforms.call(this, callBackFn);
+        // if(callBackFn)callBackFn();
+    }
+    
+    function checkDefine(defineVar){
+        for(var i=0; i<this.settings.defines.length; i++){
+            if(this.settings.defines[i] == defineVar)return i;
+        }
+        return -1;
+    }
+    
+    function addDefine(defineVar){
+        if(!defineVar || this.checkDefine(defineVar) >= 0)return; // var is null or already defined
+        this.settings.defines.push(defineVar);
+    }
+    
+    function removeDefine(defineVar){
+        if(!defineVar)return; // var is null
+        var defineIndex = this.checkDefine(defineVar);
+        if(defineIndex < 0)return; // not defined
+        this.settings.defines.splice(defineIndex, 1);
     }
 
     function setupUniforms(callBackFn){
@@ -578,7 +603,7 @@ Aero.registerJSProgram = function(id, obj){
             }
         }
 
-        callBackFn();
+        if(callBackFn)callBackFn();
     }
 
     function updateUniforms(){
@@ -633,7 +658,12 @@ Aero.registerJSProgram = function(id, obj){
     }
 
     GLProgram.prototype.init = init;
+    GLProgram.prototype.compile = compile;
+    GLProgram.prototype.checkDefine = checkDefine;
+    GLProgram.prototype.addDefine = addDefine;
+    GLProgram.prototype.removeDefine = removeDefine;
     GLProgram.prototype.updateUniforms = updateUniforms;
+    
     GLProgram.prototype.render = render;
     GLProgram.prototype.resize = resize;
     GLProgram.prototype.destroy = destroy;
@@ -807,7 +837,7 @@ UTILITY FUNCTIONS
 
     function Renderer(_scene){
         this.scene = _scene;
-             
+        this.frameBuffers = [];
     }
     
     // not run until data and canvas are in place
@@ -825,8 +855,8 @@ UTILITY FUNCTIONS
     function update(callBackFn){
         
         var function_arr =  [
-                { fn: createRenderList },
-                { fn: createFrameBuffers },
+                // { fn: createRenderList },
+                // { fn: assignFrameBuffers },
                 { fn: initVertexBuffers },
                 { fn: callBackFn }
             ];
@@ -845,17 +875,41 @@ UTILITY FUNCTIONS
         for(var node in nodes){
             if(nodes[node].resize)nodes[node].resize(w, h);
         }
+        var gl = this.gl;
+        
+        // need to resize frame buffers
+        for(var i=0; i<this.frameBuffers.length; i++){
+            if(this.frameBuffers[i].size !== "auto")continue; // only resize those that are autosized
+            this.frameBuffers[i].width = w;
+            this.frameBuffers[i].height = h;
+            
+            // size texture
+            gl.bindTexture(gl.TEXTURE_2D, this.frameBuffers[i].texture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            gl.bindTexture(gl.TEXTURE_2D, null);
+
+            // size depth buffer
+            gl.bindRenderbuffer(gl.RENDERBUFFER, this.frameBuffers[i].renderBuffer);
+            gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
+            gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+            
+        }
+        
     }
         
     function createRenderList(callBackFn){
         console.log('/////////////////  createRenderList  /////////////////');
+        
+        // first we reset all the nodes to default settings
+        
+        
         // figure out the render chains.
         // the idea is to track back from any canvas renders
         // the order doesn't have to be exact order, but all
         // dependencies must be figured out
         
-        var connections = this.scene.data["connections"],
-            nodesToCheck = connectionSearch(connections, 'dest', 'canvas'), //initial connections to check
+        var connections = this.scene.connections,
+            nodesToCheck = this.scene.connectionSearch('dest', 'canvas'), //initial connections to check are those that draw to canvas
             connectedNodes = [],
             currConnection,
             currNode,
@@ -865,15 +919,23 @@ UTILITY FUNCTIONS
             connectedIndex,
             lowestIndex,
             highestIndex,
-            s, d;
+            s, d, r;
 
-        // set the nodes to draw to canvas
+        console.log('initial nodes to check: '+nodesToCheck.length);
+        
+        // clear render list
+        this.renderList = [];
+        // reset all nodes
+        for(currNode in this.scene.nodes){
+            this.scene.nodes[currNode].inRenderList = false;
+            this.scene.nodes[currNode].dependents = []
+        }
+        
+        // setup the nodes that draw to canvas
         for(r=0; r<nodesToCheck.length; r++){
             connectedNode = getConnectedNode.call(this, nodesToCheck[r], 'source');
             connectedNode.drawToCanvas = true;
         }
-
-        this.renderList = [];
 
         // Everytime I check a node I will add it to the render list
         // I check what dependencies it has, and what other nodes depend on it
@@ -895,11 +957,12 @@ UTILITY FUNCTIONS
             // console.log(currConnection);
             currNode = getConnectedNode.call(this, currConnection, 'source');
             console.log('checking node: '+currNode.id);
+            console.log(currNode.inRenderList);
             if(currNode.inRenderList)continue; // keeps a node from ever being added twice
             currNode.inRenderList = true;
 
             // connections where the current node is the source
-            sourceConnections = connectionSearch(connections, 'source', currConnection['source']['id']);
+            sourceConnections = this.scene.connectionSearch('source', currConnection['source']['id']);
 
             // console.log('source connections');
             for(s=0; s<sourceConnections.length; s++){
@@ -937,7 +1000,7 @@ UTILITY FUNCTIONS
             }
 
             // connections where the current node is the dest
-            destConnections = connectionSearch(connections, 'dest', currConnection['source']['id']);
+            destConnections = this.scene.connectionSearch('dest', currConnection['source']['id']);
 
             // console.log('dest connections');
             for(d=0; d<destConnections.length; d++){
@@ -980,21 +1043,9 @@ UTILITY FUNCTIONS
         }
         console.log(renderOrderStr);
 
-        callBackFn();
+        // callBackFn();
         
-        // createFrameBuffers.call(this, callBackFn);
-    }
-
-    function connectionSearch(connections, dir, id){
-        // this loops through all connections and returns all that have the
-        // specified ID in the specified direction.  dir is either source or dest
-
-        // console.log("connectionSearch: "+dir+" : "+id);
-        var results = [];
-        for(var i=0; i<connections.length; i++){
-            if(connections[i][dir]['id'].toLowerCase() == String(id).toLowerCase())results.push(connections[i]);
-        }
-        return results;
+        assignFrameBuffers.call(this, callBackFn);
     }
 
     function getConnectedNode(connection, dir){
@@ -1033,9 +1084,14 @@ UTILITY FUNCTIONS
         }, this.scene);
     }
     
-    function createFrameBuffers(callBackFn){
-        console.log('/////////////////  createFrameBuffers  /////////////////');
-        this.frameBuffers = [];
+    function assignFrameBuffers(callBackFn){
+        console.log('/////////////////  assignFrameBuffers  /////////////////');
+        
+        // reset current frame buffers
+        for(var i=0; i<this.frameBuffers.length; i++){
+            this.frameBuffers[i].holdForever = false;
+            this.frameBuffers[i].holdIndex = -1;
+        }
 
         var currBuffer,
             currNode,
@@ -1046,20 +1102,19 @@ UTILITY FUNCTIONS
         // loop through frame buffers defined in JSON, if any
         // create buffer for each object and assign it to node
 
-        if(this.scene.data["frameBuffers"]){
-            for(var r in this.scene.data["frameBuffers"]){
-                var buffObj = this.scene.data["frameBuffers"][r];
-                if(buffObj["nodes"] && buffObj["nodes"].length){
-                    currBuffer = getNextFrameBuffer.call(this, 0);
-                    currBuffer.holdForever = true;
-                    for(o=0; o<buffObj["nodes"].length; o++){
-                        currNode = this.scene.nodes[buffObj["nodes"][o]];
-                        if(!currNode){
-                            console.log('Could not assign frame buffer "'+r+'" to node "'+buffObj["nodes"][o]+'" because it does not exist');
-                            continue;
-                        }
-                        currNode.forcedBuffer = currBuffer;
+        for(var i=0; i<this.scene.renderTargets.length; i++){
+            var buffObj = this.scene.renderTargets[i];
+            console.log(buffObj);
+            if(buffObj["nodes"].length){
+                currBuffer = this.frameBuffers[i] || getNextFrameBuffer.call(this, 0);
+                currBuffer.holdForever = true;
+                for(o=0; o<buffObj["nodes"].length; o++){
+                    currNode = this.scene.nodes[buffObj["nodes"][o]];
+                    if(!currNode){
+                        console.log('Could not assign frame buffer "'+r+'" to node "'+buffObj["nodes"][o]+'" because it does not exist');
+                        continue;
                     }
+                    currNode.forcedBuffer = currBuffer;
                 }
             }
         }
@@ -1074,10 +1129,10 @@ UTILITY FUNCTIONS
             currNode = this.renderList[r];
 
             // if any of these then the node doesn't need a frame buffer
-            if( currNode.type == "texture") continue;
-            if( currNode.type == "JSProgram" && !currNode.draws) continue;
-            if( currNode.drawToCanvas) continue;
-            if( !currNode.dependents || !currNode.dependents.length) continue;
+            if( currNode.type == "texture" ) continue;
+            if( currNode.type == "JSProgram" && !currNode.draws ) continue;
+            if( currNode.drawToCanvas ) continue;
+            if( !currNode.dependents || !currNode.dependents.length ) continue;
 
             if(currNode.forcedBuffer){
                 // buffer was assigned in JSON created above
@@ -1103,6 +1158,8 @@ UTILITY FUNCTIONS
                     
                 connectedIndex = getRenderListIndex(this.renderList, connectedNode);
                 currBuffer.holdIndex = Math.max(connectedIndex, currBuffer.holdIndex);
+                console.log('framebuffer connectedIndex: '+connectedIndex);
+                console.log('framebuffer holdIndex: '+currBuffer.holdIndex);
             }
 
             currNode.outputBuffer = currBuffer.index;
@@ -1137,22 +1194,21 @@ UTILITY FUNCTIONS
 
     function createFrameBuffer(){
         var gl = this.gl,
-            rttFramebuffer,
-            rttTexture,
+            rttFramebuffer = gl.createFramebuffer(),
+            rttTexture = gl.createTexture(),
             renderbuffer = gl.createRenderbuffer(),
+            size = "auto",
             bufferWidth = this.scene.canvas.width,
             bufferHeight = this.scene.canvas.height,
             texUnit = this.getNextTexUnit();
 
         console.log('createFrameBuffer: texUnit '+texUnit);
 
-        // create frame buffer
-        rttFramebuffer = gl.createFramebuffer();
+        // frame buffer
         gl.activeTexture(gl["TEXTURE"+texUnit]);
         gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);
 
-        // create texture
-        rttTexture = gl.createTexture();
+        // texture
         gl.bindTexture(gl.TEXTURE_2D, rttTexture);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -1164,7 +1220,7 @@ UTILITY FUNCTIONS
 
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, bufferWidth, bufferHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 
-        // create depth buffer, not sure we need this actually
+        // depth buffer, not sure we need this actually
         gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
         gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, bufferWidth, bufferHeight);
 
@@ -1178,6 +1234,7 @@ UTILITY FUNCTIONS
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         return {
+            size: size,
             frameBuffer: rttFramebuffer,
             texture: rttTexture,
             renderBuffer: renderbuffer,
@@ -1334,11 +1391,14 @@ UTILITY FUNCTIONS
             
         if(!this.gl)return;
         
-        // if(this.scene.needsUpdate){
-        //     this.scene.needsUpdate = false;
-        //     createRenderList.call(this, render.bind(this));
-        //     return;
-        // }
+        if(this.scene.needsUpdate){
+            this.scene.needsUpdate = false;
+            createRenderList.call(this, function(){
+                console.log('render list callback');
+                render.call(this);
+            }.bind(this));
+            return;
+        }
         
         for(var p=0; p<this.renderList.length; p++){
             nodeObj = this.renderList[p];
@@ -1499,6 +1559,8 @@ UTILITY FUNCTIONS
                 { fn: createTextures, vars: [jsonObj["textures"]] },
                 { fn: createJSPrograms, vars: [jsonObj["jsPrograms"] || jsonObj["JSPrograms"]] },
                 { fn: createGLPrograms, vars: [jsonObj["glPrograms"] || jsonObj["GLPrograms"]] },
+                { fn: createRenderTargets, vars: [jsonObj["renderTargets"] || jsonObj["Connections"]] },
+                { fn: createConnections, vars: [jsonObj["connections"] || jsonObj["Connections"]] },
                 { fn: callBackFn}
             ];
             
@@ -1623,6 +1685,30 @@ UTILITY FUNCTIONS
         }
     }
     
+    function createConnections(connectionData, callBackFn){
+        for(var i=0; i<connectionData.length; i++){
+            this.scene.createConnection(
+                    connectionData[i].source.id,
+                    connectionData[i].source.var || null,
+                    connectionData[i].dest.id,
+                    connectionData[i].dest.var || null,
+                    connectionData[i].feedback || null
+                );
+        }
+        if(callBackFn)callBackFn();
+    }
+    
+    function createRenderTargets(targetData, callBackFn){
+        // for(var i=0; i<targetData.length; i++){
+        for(var i in targetData){
+            this.scene.createRenderTarget(
+                    i,
+                    targetData[i].nodes
+                );
+        }
+        if(callBackFn)callBackFn();        
+    }
+    
     function destroy(){        
         this.arrayExecuter.destroy();
         
@@ -1667,6 +1753,7 @@ UTILITY FUNCTIONS
         
         this.nodes = {};
         this.connections = [];
+        this.renderTargets = [];
         // this variable specifies whether the render list needs to be updated
         // set to true whenever there are changes in node connections
         this.needsUpdate = false; 
@@ -1793,51 +1880,82 @@ UTILITY FUNCTIONS
         
     }
     
+    function createRenderTarget(id, nodes){
+        var _nodes = [];
+        for(var i=0; i<nodes.length; i++){
+            if(this.nodes.hasOwnProperty(nodes[i])){
+                _nodes.push(nodes[i]);
+            }
+        }
+        this.renderTargets.push({
+            "id": id,
+            "nodes": _nodes
+        })
+    }
     
-    // function createConnection(sourceId, sourceVar, destId, destVar){
-    //     // confirm the connection is valid
-    //     if(!sourceId || !destId)return; // no id passed
-    //     if(!this.nodes.hasOwnProperty(sourceId))return; // source doesn't exist
-    //     if(!this.nodes.hasOwnProperty(destId) && String(destId).toLowerCase() != 'canvas')return; // dest doesn't exist
+    function createConnection(sourceId, sourceVar, destId, destVar, feedback){
+        // confirm the connection is valid
+        if(!sourceId || !destId)return; // no id passed
+        if(!this.nodes.hasOwnProperty(sourceId))return; // source doesn't exist
+        if(!this.nodes.hasOwnProperty(destId) && String(destId).toLowerCase() != 'canvas')return; // dest doesn't exist
         
-    //     // add to connections list
-    //     this.connections.push({
-    //         "id": this._idCount++,
-    //         "source": 
-    //             {
-    //                 "id": sourceId,
-    //                 "var": sourceVar
-    //             },
-    //         "dest": 
-    //             {
-    //                 "id": destId,
-    //                 "var": destVar
-    //             }
-    //     });
+        // add to connections list
+        this.connections.push({
+            "id": this._idCount++,
+            "feedback": feedback || false,
+            "source": 
+                {
+                    "id": sourceId,
+                    "var": sourceVar
+                },
+            "dest": 
+                {
+                    "id": destId,
+                    "var": destVar
+                }
+        });
         
-    //     this.needsUpdate = true;
-    // }
+        this.needsUpdate = true;
+    }
     
-    // function deleteConnection(connectionId){
-    //     for(var i=0; i<this.connections.length; i++){
-    //         if(this.connections[i]['id'] == connectionId){
-    //             this.connections.splice(i, 1);
-    //             this.needsUpdate = true;
-    //             return;
-    //         }
-    //     }
-    // }
+    function _returnConnectionIndex(connectionId){        
+        for(var i=0; i<this.connections.length; i++)
+            if(this.connections[i]['id'] == connectionId)
+                return i;
+        return -1;
+    }
     
-    // function connectionSearch(dir, id){
-    //     // this loops through all connections and returns all that have the
-    //     // specified ID in the specified direction.  dir is either "source" or "dest"
-
-    //     var results = [];
-    //     for(var i=0; i<this.connections.length; i++){
-    //         if(this.connections[i][dir]['id'].toLowerCase() == String(id).toLowerCase())results.push(this.connections[i]);
-    //     }
-    //     return results;
-    // }
+    function updateConnection(connectionId, dir, newId, newVar){
+        var index = _returnConnectionIndex.call(this, connectionId);
+        if(index >= 0){
+            if(this.nodes.hasOwnProperty(newId) || String(newId).toLowerCase() == 'canvas' && dir == "source"){
+                var connection = this.connections[index];
+                connection[dir].id = newId;
+                connection[dir].var = newVar || null;
+                this.needsUpdate = true;
+            }
+        }
+    }
+    
+    function deleteConnection(connectionId){
+        var index = _returnConnectionIndex.call(this, connectionId);
+        if(index >= 0){
+            this.connections.splice(index, 1);
+            this.needsUpdate = true;
+        }
+    }
+    
+    function connectionSearch(dir, id, connections){
+        // this loops through all connections and returns all that have the
+        // specified ID in the specified direction.  dir is either "source" or "dest"
+        
+        var results = [],
+            connections = connections || this.connections; // you can pass a list of connections if you want
+        for(var i=0; i<connections.length; i++){
+            if(connections[i][dir]['id'].toLowerCase() == String(id).toLowerCase())results.push(connections[i]);
+        }
+        return results;
+    }
 
     
     function destroy(){
@@ -1867,7 +1985,11 @@ UTILITY FUNCTIONS
     Scene.prototype.checkNodeId = checkNodeId;
     Scene.prototype.createTexture = createTexture;
     Scene.prototype.createJSProgram = createJSProgram;
-    Scene.prototype.createGLProgram = createGLProgram;    
+    Scene.prototype.createGLProgram = createGLProgram;  
+    Scene.prototype.createRenderTarget = createRenderTarget;
+    Scene.prototype.createConnection = createConnection;  
+    Scene.prototype.updateConnection = updateConnection;  
+    Scene.prototype.connectionSearch = connectionSearch;
     Scene.prototype.destroy = destroy;
     
     // convenience functions

@@ -5,7 +5,7 @@
 
     function Renderer(_scene){
         this.scene = _scene;
-             
+        this.frameBuffers = [];
     }
     
     // not run until data and canvas are in place
@@ -23,8 +23,8 @@
     function update(callBackFn){
         
         var function_arr =  [
-                { fn: createRenderList },
-                // { fn: createFrameBuffers },
+                // { fn: createRenderList },
+                // { fn: assignFrameBuffers },
                 { fn: initVertexBuffers },
                 { fn: callBackFn }
             ];
@@ -51,21 +51,15 @@
             this.frameBuffers[i].width = w;
             this.frameBuffers[i].height = h;
             
-            gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffers[i].frameBuffer);
+            // size texture
             gl.bindTexture(gl.TEXTURE_2D, this.frameBuffers[i].texture);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            gl.bindTexture(gl.TEXTURE_2D, null);
 
-            // create depth buffer, not sure we need this actually
+            // size depth buffer
             gl.bindRenderbuffer(gl.RENDERBUFFER, this.frameBuffers[i].renderBuffer);
             gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
-
-            // attach texture and depth buffer to frame buffer
-            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.frameBuffers[i].texture, 0);
-            gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.frameBuffers[i].renderBuffer);
-
-            // unbind the texture and buffers
             gl.bindRenderbuffer(gl.RENDERBUFFER, null);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             
         }
         
@@ -73,13 +67,17 @@
         
     function createRenderList(callBackFn){
         console.log('/////////////////  createRenderList  /////////////////');
+        
+        // first we reset all the nodes to default settings
+        
+        
         // figure out the render chains.
         // the idea is to track back from any canvas renders
         // the order doesn't have to be exact order, but all
         // dependencies must be figured out
         
-        var connections = this.scene.data["connections"],
-            nodesToCheck = connectionSearch(connections, 'dest', 'canvas'), //initial connections to check
+        var connections = this.scene.connections,
+            nodesToCheck = this.scene.connectionSearch('dest', 'canvas'), //initial connections to check are those that draw to canvas
             connectedNodes = [],
             currConnection,
             currNode,
@@ -89,15 +87,23 @@
             connectedIndex,
             lowestIndex,
             highestIndex,
-            s, d;
+            s, d, r;
 
-        // set the nodes to draw to canvas
+        console.log('initial nodes to check: '+nodesToCheck.length);
+        
+        // clear render list
+        this.renderList = [];
+        // reset all nodes
+        for(currNode in this.scene.nodes){
+            this.scene.nodes[currNode].inRenderList = false;
+            this.scene.nodes[currNode].dependents = []
+        }
+        
+        // setup the nodes that draw to canvas
         for(r=0; r<nodesToCheck.length; r++){
             connectedNode = getConnectedNode.call(this, nodesToCheck[r], 'source');
             connectedNode.drawToCanvas = true;
         }
-
-        this.renderList = [];
 
         // Everytime I check a node I will add it to the render list
         // I check what dependencies it has, and what other nodes depend on it
@@ -119,11 +125,12 @@
             // console.log(currConnection);
             currNode = getConnectedNode.call(this, currConnection, 'source');
             console.log('checking node: '+currNode.id);
+            console.log(currNode.inRenderList);
             if(currNode.inRenderList)continue; // keeps a node from ever being added twice
             currNode.inRenderList = true;
 
             // connections where the current node is the source
-            sourceConnections = connectionSearch(connections, 'source', currConnection['source']['id']);
+            sourceConnections = this.scene.connectionSearch('source', currConnection['source']['id']);
 
             // console.log('source connections');
             for(s=0; s<sourceConnections.length; s++){
@@ -161,7 +168,7 @@
             }
 
             // connections where the current node is the dest
-            destConnections = connectionSearch(connections, 'dest', currConnection['source']['id']);
+            destConnections = this.scene.connectionSearch('dest', currConnection['source']['id']);
 
             // console.log('dest connections');
             for(d=0; d<destConnections.length; d++){
@@ -206,19 +213,7 @@
 
         // callBackFn();
         
-        createFrameBuffers.call(this, callBackFn);
-    }
-
-    function connectionSearch(connections, dir, id){
-        // this loops through all connections and returns all that have the
-        // specified ID in the specified direction.  dir is either source or dest
-
-        // console.log("connectionSearch: "+dir+" : "+id);
-        var results = [];
-        for(var i=0; i<connections.length; i++){
-            if(connections[i][dir]['id'].toLowerCase() == String(id).toLowerCase())results.push(connections[i]);
-        }
-        return results;
+        assignFrameBuffers.call(this, callBackFn);
     }
 
     function getConnectedNode(connection, dir){
@@ -257,9 +252,14 @@
         }, this.scene);
     }
     
-    function createFrameBuffers(callBackFn){
-        console.log('/////////////////  createFrameBuffers  /////////////////');
-        this.frameBuffers = [];
+    function assignFrameBuffers(callBackFn){
+        console.log('/////////////////  assignFrameBuffers  /////////////////');
+        
+        // reset current frame buffers
+        for(var i=0; i<this.frameBuffers.length; i++){
+            this.frameBuffers[i].holdForever = false;
+            this.frameBuffers[i].holdIndex = -1;
+        }
 
         var currBuffer,
             currNode,
@@ -270,20 +270,19 @@
         // loop through frame buffers defined in JSON, if any
         // create buffer for each object and assign it to node
 
-        if(this.scene.data["frameBuffers"]){
-            for(var r in this.scene.data["frameBuffers"]){
-                var buffObj = this.scene.data["frameBuffers"][r];
-                if(buffObj["nodes"] && buffObj["nodes"].length){
-                    currBuffer = getNextFrameBuffer.call(this, 0);
-                    currBuffer.holdForever = true;
-                    for(o=0; o<buffObj["nodes"].length; o++){
-                        currNode = this.scene.nodes[buffObj["nodes"][o]];
-                        if(!currNode){
-                            console.log('Could not assign frame buffer "'+r+'" to node "'+buffObj["nodes"][o]+'" because it does not exist');
-                            continue;
-                        }
-                        currNode.forcedBuffer = currBuffer;
+        for(var i=0; i<this.scene.renderTargets.length; i++){
+            var buffObj = this.scene.renderTargets[i];
+            console.log(buffObj);
+            if(buffObj["nodes"].length){
+                currBuffer = this.frameBuffers[i] || getNextFrameBuffer.call(this, 0);
+                currBuffer.holdForever = true;
+                for(o=0; o<buffObj["nodes"].length; o++){
+                    currNode = this.scene.nodes[buffObj["nodes"][o]];
+                    if(!currNode){
+                        console.log('Could not assign frame buffer "'+r+'" to node "'+buffObj["nodes"][o]+'" because it does not exist');
+                        continue;
                     }
+                    currNode.forcedBuffer = currBuffer;
                 }
             }
         }
@@ -298,10 +297,10 @@
             currNode = this.renderList[r];
 
             // if any of these then the node doesn't need a frame buffer
-            if( currNode.type == "texture") continue;
-            if( currNode.type == "JSProgram" && !currNode.draws) continue;
-            if( currNode.drawToCanvas) continue;
-            if( !currNode.dependents || !currNode.dependents.length) continue;
+            if( currNode.type == "texture" ) continue;
+            if( currNode.type == "JSProgram" && !currNode.draws ) continue;
+            if( currNode.drawToCanvas ) continue;
+            if( !currNode.dependents || !currNode.dependents.length ) continue;
 
             if(currNode.forcedBuffer){
                 // buffer was assigned in JSON created above
@@ -327,6 +326,8 @@
                     
                 connectedIndex = getRenderListIndex(this.renderList, connectedNode);
                 currBuffer.holdIndex = Math.max(connectedIndex, currBuffer.holdIndex);
+                console.log('framebuffer connectedIndex: '+connectedIndex);
+                console.log('framebuffer holdIndex: '+currBuffer.holdIndex);
             }
 
             currNode.outputBuffer = currBuffer.index;
@@ -361,8 +362,8 @@
 
     function createFrameBuffer(){
         var gl = this.gl,
-            rttFramebuffer,
-            rttTexture,
+            rttFramebuffer = gl.createFramebuffer(),
+            rttTexture = gl.createTexture(),
             renderbuffer = gl.createRenderbuffer(),
             size = "auto",
             bufferWidth = this.scene.canvas.width,
@@ -371,13 +372,11 @@
 
         console.log('createFrameBuffer: texUnit '+texUnit);
 
-        // create frame buffer
-        rttFramebuffer = gl.createFramebuffer();
+        // frame buffer
         gl.activeTexture(gl["TEXTURE"+texUnit]);
         gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);
 
-        // create texture
-        rttTexture = gl.createTexture();
+        // texture
         gl.bindTexture(gl.TEXTURE_2D, rttTexture);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -389,7 +388,7 @@
 
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, bufferWidth, bufferHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 
-        // create depth buffer, not sure we need this actually
+        // depth buffer, not sure we need this actually
         gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
         gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, bufferWidth, bufferHeight);
 
@@ -560,11 +559,14 @@
             
         if(!this.gl)return;
         
-        // if(this.scene.needsUpdate){
-        //     this.scene.needsUpdate = false;
-        //     createRenderList.call(this, render.bind(this));
-        //     return;
-        // }
+        if(this.scene.needsUpdate){
+            this.scene.needsUpdate = false;
+            createRenderList.call(this, function(){
+                console.log('render list callback');
+                render.call(this);
+            }.bind(this));
+            return;
+        }
         
         for(var p=0; p<this.renderList.length; p++){
             nodeObj = this.renderList[p];

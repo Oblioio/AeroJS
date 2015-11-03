@@ -34,6 +34,8 @@
                 { fn: createTextures, vars: [jsonObj["textures"]] },
                 { fn: createJSPrograms, vars: [jsonObj["jsPrograms"] || jsonObj["JSPrograms"]] },
                 { fn: createGLPrograms, vars: [jsonObj["glPrograms"] || jsonObj["GLPrograms"]] },
+                { fn: createRenderTargets, vars: [jsonObj["renderTargets"] || jsonObj["Connections"]] },
+                { fn: createConnections, vars: [jsonObj["connections"] || jsonObj["Connections"]] },
                 { fn: callBackFn}
             ];
             
@@ -156,6 +158,30 @@
             function_arr.push({fn: callBackFn });
             this.arrayExecuter.execute(function_arr);
         }
+    }
+    
+    function createConnections(connectionData, callBackFn){
+        for(var i=0; i<connectionData.length; i++){
+            this.scene.createConnection(
+                    connectionData[i].source.id,
+                    connectionData[i].source.var || null,
+                    connectionData[i].dest.id,
+                    connectionData[i].dest.var || null,
+                    connectionData[i].feedback || null
+                );
+        }
+        if(callBackFn)callBackFn();
+    }
+    
+    function createRenderTargets(targetData, callBackFn){
+        // for(var i=0; i<targetData.length; i++){
+        for(var i in targetData){
+            this.scene.createRenderTarget(
+                    i,
+                    targetData[i].nodes
+                );
+        }
+        if(callBackFn)callBackFn();        
     }
     
     function destroy(){        

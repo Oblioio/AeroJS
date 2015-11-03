@@ -21,6 +21,7 @@
         
         this.nodes = {};
         this.connections = [];
+        this.renderTargets = [];
         // this variable specifies whether the render list needs to be updated
         // set to true whenever there are changes in node connections
         this.needsUpdate = false; 
@@ -147,8 +148,20 @@
         
     }
     
+    function createRenderTarget(id, nodes){
+        var _nodes = [];
+        for(var i=0; i<nodes.length; i++){
+            if(this.nodes.hasOwnProperty(nodes[i])){
+                _nodes.push(nodes[i]);
+            }
+        }
+        this.renderTargets.push({
+            "id": id,
+            "nodes": _nodes
+        })
+    }
     
-    function createConnection(sourceId, sourceVar, destId, destVar){
+    function createConnection(sourceId, sourceVar, destId, destVar, feedback){
         // confirm the connection is valid
         if(!sourceId || !destId)return; // no id passed
         if(!this.nodes.hasOwnProperty(sourceId))return; // source doesn't exist
@@ -157,6 +170,7 @@
         // add to connections list
         this.connections.push({
             "id": this._idCount++,
+            "feedback": feedback || false,
             "source": 
                 {
                     "id": sourceId,
@@ -172,23 +186,41 @@
         this.needsUpdate = true;
     }
     
-    function deleteConnection(connectionId){
-        for(var i=0; i<this.connections.length; i++){
-            if(this.connections[i]['id'] == connectionId){
-                this.connections.splice(i, 1);
+    function _returnConnectionIndex(connectionId){        
+        for(var i=0; i<this.connections.length; i++)
+            if(this.connections[i]['id'] == connectionId)
+                return i;
+        return -1;
+    }
+    
+    function updateConnection(connectionId, dir, newId, newVar){
+        var index = _returnConnectionIndex.call(this, connectionId);
+        if(index >= 0){
+            if(this.nodes.hasOwnProperty(newId) || String(newId).toLowerCase() == 'canvas' && dir == "source"){
+                var connection = this.connections[index];
+                connection[dir].id = newId;
+                connection[dir].var = newVar || null;
                 this.needsUpdate = true;
-                return;
             }
         }
     }
     
-    function connectionSearch(dir, id){
+    function deleteConnection(connectionId){
+        var index = _returnConnectionIndex.call(this, connectionId);
+        if(index >= 0){
+            this.connections.splice(index, 1);
+            this.needsUpdate = true;
+        }
+    }
+    
+    function connectionSearch(dir, id, connections){
         // this loops through all connections and returns all that have the
         // specified ID in the specified direction.  dir is either "source" or "dest"
-
-        var results = [];
-        for(var i=0; i<this.connections.length; i++){
-            if(this.connections[i][dir]['id'].toLowerCase() == String(id).toLowerCase())results.push(this.connections[i]);
+        
+        var results = [],
+            connections = connections || this.connections; // you can pass a list of connections if you want
+        for(var i=0; i<connections.length; i++){
+            if(connections[i][dir]['id'].toLowerCase() == String(id).toLowerCase())results.push(connections[i]);
         }
         return results;
     }
@@ -221,7 +253,11 @@
     Scene.prototype.checkNodeId = checkNodeId;
     Scene.prototype.createTexture = createTexture;
     Scene.prototype.createJSProgram = createJSProgram;
-    Scene.prototype.createGLProgram = createGLProgram;    
+    Scene.prototype.createGLProgram = createGLProgram;  
+    Scene.prototype.createRenderTarget = createRenderTarget;
+    Scene.prototype.createConnection = createConnection;  
+    Scene.prototype.updateConnection = updateConnection;  
+    Scene.prototype.connectionSearch = connectionSearch;
     Scene.prototype.destroy = destroy;
     
     // convenience functions

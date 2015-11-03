@@ -16,6 +16,7 @@
         this.gl =  this.scene.gl;
         // default settings
         this.settings = {
+                defines: [],
                 renderMode: "TRIANGLE_STRIP"
             };
         
@@ -40,8 +41,7 @@
         var function_arr =  [
                 { fn: loadShader, vars: 'vShader' },
                 { fn: loadShader, vars: 'fShader' },
-                { fn: createProgram },
-                { fn: setupUniforms },
+                { fn: compile },
                 { fn: callBackFn }
             ];
 
@@ -64,21 +64,26 @@
         
     }
 
-    function createProgram(callBackFn){
-        console.log('createProgram');
+    function compile(callBackFn){
+        console.log('compile program');
 
-        var gl = this.gl;
-
+        var gl = this.gl,
+            defines = "";        
+        
+        for(var i=0; i<this.settings.defines.length; i++){
+            defines += "#define "+this.settings.defines[i]+"\n";
+        }
+        
         //create fragment shader
         var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-        gl.shaderSource(fragmentShader, this.fShader.text);
+        gl.shaderSource(fragmentShader, defines+this.fShader.text);
         gl.compileShader(fragmentShader);
         if(!checkCompile.call(this, gl, "2d-fragment-shader", fragmentShader))return;
         this.fShader.obj = fragmentShader;
 
         //create vertex shader
         var vertexShader = gl.createShader(gl.VERTEX_SHADER);
-        gl.shaderSource(vertexShader, this.vShader.text);
+        gl.shaderSource(vertexShader, defines+this.vShader.text);
         gl.compileShader(vertexShader);
         if(!checkCompile.call(this, gl, "2d-vertex-shader", vertexShader))return;
         this.vShader.obj = vertexShader;
@@ -93,7 +98,27 @@
         this.program = program;
         gl.program = program;
 
-        callBackFn();
+        setupUniforms.call(this, callBackFn);
+        // if(callBackFn)callBackFn();
+    }
+    
+    function checkDefine(defineVar){
+        for(var i=0; i<this.settings.defines.length; i++){
+            if(this.settings.defines[i] == defineVar)return i;
+        }
+        return -1;
+    }
+    
+    function addDefine(defineVar){
+        if(!defineVar || this.checkDefine(defineVar) >= 0)return; // var is null or already defined
+        this.settings.defines.push(defineVar);
+    }
+    
+    function removeDefine(defineVar){
+        if(!defineVar)return; // var is null
+        var defineIndex = this.checkDefine(defineVar);
+        if(defineIndex < 0)return; // not defined
+        this.settings.defines.splice(defineIndex, 1);
     }
 
     function setupUniforms(callBackFn){
@@ -201,7 +226,7 @@
             }
         }
 
-        callBackFn();
+        if(callBackFn)callBackFn();
     }
 
     function updateUniforms(){
@@ -256,7 +281,12 @@
     }
 
     GLProgram.prototype.init = init;
+    GLProgram.prototype.compile = compile;
+    GLProgram.prototype.checkDefine = checkDefine;
+    GLProgram.prototype.addDefine = addDefine;
+    GLProgram.prototype.removeDefine = removeDefine;
     GLProgram.prototype.updateUniforms = updateUniforms;
+    
     GLProgram.prototype.render = render;
     GLProgram.prototype.resize = resize;
     GLProgram.prototype.destroy = destroy;
