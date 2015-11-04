@@ -497,6 +497,11 @@ Aero.registerJSProgram = function(id, obj){
         if(defineIndex < 0)return; // not defined
         this.settings.defines.splice(defineIndex, 1);
     }
+    
+    function setDefines(defineArr){
+        if(!defineArr.constructor === Array)return; // var is not an array
+        this.settings.defines = defineArr;
+    }
 
     function setupUniforms(callBackFn){
         var gl = this.gl,
@@ -508,7 +513,7 @@ Aero.registerJSProgram = function(id, obj){
             u_apply;
 
         this.uniforms = [];
-        this.inputs = {};
+        this.inputs = this.inputs || {};
         
         for(var u in uniformSettings){
             uniObj = uniformSettings[u];
@@ -580,7 +585,7 @@ Aero.registerJSProgram = function(id, obj){
                     u_fn = false;
             }
 
-            this.inputs[u] = u_val;
+            this.inputs[u] = this.inputs[u] || u_val;
             this.uniforms.push({
                 id: u,
                 type: uniObj.type,
@@ -593,7 +598,7 @@ Aero.registerJSProgram = function(id, obj){
         if(!this.inputs["u_resolution"]){
             u_loc = gl.getUniformLocation(this.program, "u_resolution");
             if(u_loc !== null){
-                this.inputs["u_resolution"] = [1,1]; // initial value
+                this.inputs["u_resolution"] = this.inputs["u_resolution"] || [1,1];
                 this.uniforms.push({
                     id: "u_resolution",
                     type: "2f",
@@ -662,6 +667,8 @@ Aero.registerJSProgram = function(id, obj){
     GLProgram.prototype.checkDefine = checkDefine;
     GLProgram.prototype.addDefine = addDefine;
     GLProgram.prototype.removeDefine = removeDefine;
+    GLProgram.prototype.setDefines = setDefines;
+    
     GLProgram.prototype.updateUniforms = updateUniforms;
     
     GLProgram.prototype.render = render;
@@ -1017,7 +1024,7 @@ UTILITY FUNCTIONS
                 }
             }
 
-            console.log('adding: '+currNode.id+", highestIndex: "+highestIndex+", lowestIndex: "+lowestIndex);
+            // console.log('adding: '+currNode.id+", highestIndex: "+highestIndex+", lowestIndex: "+lowestIndex);
 
             if(lowestIndex !== false && highestIndex !== false && lowestIndex >= highestIndex){
                 // console.log('createRenderList: connection error! lowestIndex is greater than highestIndex');
@@ -1104,7 +1111,6 @@ UTILITY FUNCTIONS
 
         for(var i=0; i<this.scene.renderTargets.length; i++){
             var buffObj = this.scene.renderTargets[i];
-            console.log(buffObj);
             if(buffObj["nodes"].length){
                 currBuffer = this.frameBuffers[i] || getNextFrameBuffer.call(this, 0);
                 currBuffer.holdForever = true;
@@ -1158,8 +1164,8 @@ UTILITY FUNCTIONS
                     
                 connectedIndex = getRenderListIndex(this.renderList, connectedNode);
                 currBuffer.holdIndex = Math.max(connectedIndex, currBuffer.holdIndex);
-                console.log('framebuffer connectedIndex: '+connectedIndex);
-                console.log('framebuffer holdIndex: '+currBuffer.holdIndex);
+                // console.log('framebuffer connectedIndex: '+connectedIndex);
+                // console.log('framebuffer holdIndex: '+currBuffer.holdIndex);
             }
 
             currNode.outputBuffer = currBuffer.index;

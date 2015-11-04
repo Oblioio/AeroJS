@@ -120,6 +120,11 @@
         if(defineIndex < 0)return; // not defined
         this.settings.defines.splice(defineIndex, 1);
     }
+    
+    function setDefines(defineArr){
+        if(!defineArr.constructor === Array)return; // var is not an array
+        this.settings.defines = defineArr;
+    }
 
     function setupUniforms(callBackFn){
         var gl = this.gl,
@@ -131,7 +136,7 @@
             u_apply;
 
         this.uniforms = [];
-        this.inputs = {};
+        this.inputs = this.inputs || {};
         
         for(var u in uniformSettings){
             uniObj = uniformSettings[u];
@@ -203,7 +208,7 @@
                     u_fn = false;
             }
 
-            this.inputs[u] = u_val;
+            this.inputs[u] = this.inputs[u] || u_val;
             this.uniforms.push({
                 id: u,
                 type: uniObj.type,
@@ -216,7 +221,7 @@
         if(!this.inputs["u_resolution"]){
             u_loc = gl.getUniformLocation(this.program, "u_resolution");
             if(u_loc !== null){
-                this.inputs["u_resolution"] = [1,1]; // initial value
+                this.inputs["u_resolution"] = this.inputs["u_resolution"] || [1,1];
                 this.uniforms.push({
                     id: "u_resolution",
                     type: "2f",
@@ -285,6 +290,8 @@
     GLProgram.prototype.checkDefine = checkDefine;
     GLProgram.prototype.addDefine = addDefine;
     GLProgram.prototype.removeDefine = removeDefine;
+    GLProgram.prototype.setDefines = setDefines;
+    
     GLProgram.prototype.updateUniforms = updateUniforms;
     
     GLProgram.prototype.render = render;

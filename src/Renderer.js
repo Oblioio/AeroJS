@@ -185,7 +185,7 @@
                 }
             }
 
-            console.log('adding: '+currNode.id+", highestIndex: "+highestIndex+", lowestIndex: "+lowestIndex);
+            // console.log('adding: '+currNode.id+", highestIndex: "+highestIndex+", lowestIndex: "+lowestIndex);
 
             if(lowestIndex !== false && highestIndex !== false && lowestIndex >= highestIndex){
                 // console.log('createRenderList: connection error! lowestIndex is greater than highestIndex');
@@ -272,7 +272,6 @@
 
         for(var i=0; i<this.scene.renderTargets.length; i++){
             var buffObj = this.scene.renderTargets[i];
-            console.log(buffObj);
             if(buffObj["nodes"].length){
                 currBuffer = this.frameBuffers[i] || getNextFrameBuffer.call(this, 0);
                 currBuffer.holdForever = true;
@@ -326,8 +325,8 @@
                     
                 connectedIndex = getRenderListIndex(this.renderList, connectedNode);
                 currBuffer.holdIndex = Math.max(connectedIndex, currBuffer.holdIndex);
-                console.log('framebuffer connectedIndex: '+connectedIndex);
-                console.log('framebuffer holdIndex: '+currBuffer.holdIndex);
+                // console.log('framebuffer connectedIndex: '+connectedIndex);
+                // console.log('framebuffer holdIndex: '+currBuffer.holdIndex);
             }
 
             currNode.outputBuffer = currBuffer.index;
