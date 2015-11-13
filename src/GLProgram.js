@@ -17,6 +17,7 @@
         // default settings
         this.settings = {
                 defines: [],
+                constants: {},
                 renderMode: "TRIANGLE_STRIP"
             };
         
@@ -68,22 +69,27 @@
         console.log('compile program');
 
         var gl = this.gl,
-            defines = "";        
+            defines = "",
+            constants = "";     
         
         for(var i=0; i<this.settings.defines.length; i++){
             defines += "#define "+this.settings.defines[i]+"\n";
         }
         
+        for(var c in this.settings.constants){
+            constants += "const "+this.settings.constants[c].type+" "+c+" = "+this.settings.constants[c].value+";\n";
+        }
+        
         //create fragment shader
         var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-        gl.shaderSource(fragmentShader, defines+this.fShader.text);
+        gl.shaderSource(fragmentShader, defines+constants+this.fShader.text);
         gl.compileShader(fragmentShader);
         if(!checkCompile.call(this, gl, "2d-fragment-shader", fragmentShader))return;
         this.fShader.obj = fragmentShader;
 
         //create vertex shader
         var vertexShader = gl.createShader(gl.VERTEX_SHADER);
-        gl.shaderSource(vertexShader, defines+this.vShader.text);
+        gl.shaderSource(vertexShader, defines+constants+this.vShader.text);
         gl.compileShader(vertexShader);
         if(!checkCompile.call(this, gl, "2d-vertex-shader", vertexShader))return;
         this.vShader.obj = vertexShader;
@@ -124,6 +130,11 @@
     function setDefines(defineArr){
         if(!defineArr.constructor === Array)return; // var is not an array
         this.settings.defines = defineArr;
+    }
+    
+    function setConstant(_name, _type, _value){
+        if(_name == undefined || _type == undefined || _value == undefined)return; // need all 3 variables
+        this.settings.constants[_name] = {type:_type, value:_value};
     }
 
     function setupUniforms(callBackFn){
@@ -291,6 +302,7 @@
     GLProgram.prototype.addDefine = addDefine;
     GLProgram.prototype.removeDefine = removeDefine;
     GLProgram.prototype.setDefines = setDefines;
+    GLProgram.prototype.setConstant = setConstant;
     
     GLProgram.prototype.updateUniforms = updateUniforms;
     

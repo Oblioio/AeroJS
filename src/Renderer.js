@@ -89,7 +89,7 @@
             highestIndex,
             s, d, r;
 
-        console.log('initial nodes to check: '+nodesToCheck.length);
+        // console.log('initial nodes to check: '+nodesToCheck.length);
         
         // clear render list
         this.renderList = [];
@@ -124,8 +124,8 @@
             // console.log('currNode');
             // console.log(currConnection);
             currNode = getConnectedNode.call(this, currConnection, 'source');
-            console.log('checking node: '+currNode.id);
-            console.log(currNode.inRenderList);
+            // console.log('checking node: '+currNode.id);
+            // console.log(currNode.inRenderList);
             if(currNode.inRenderList)continue; // keeps a node from ever being added twice
             currNode.inRenderList = true;
 
@@ -579,8 +579,9 @@
                     } else {
                         // console.log('bind buffer: '+nodeObj.outputBuffer);
                         gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffers[nodeObj.outputBuffer].frameBuffer);
-                        if(nodeObj.clearBuffer)
+                        if(nodeObj.clearBuffer){
                             gl.clear(gl.COLOR_BUFFER_BIT);
+                        }
                     }
 
                     //attach program
