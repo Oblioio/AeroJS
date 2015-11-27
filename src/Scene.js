@@ -16,6 +16,7 @@
         this.arrayExecuter = new Aero.utils.ArrayExecuter(this);
         this.renderer = new Aero.Renderer(this);
         this.io = new Aero.IO(this);
+        this.ready = false;
         
         this.onReady = (parameters && parameters.onReady)?parameters.onReady:null;
         
@@ -67,6 +68,7 @@
         // call initial render
         if(this.data["settings"]["autoRender"])this.renderer.start();
         
+        this.ready = true;
         if(this.onReady)this.onReady();
     }
     

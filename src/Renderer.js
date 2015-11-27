@@ -52,17 +52,17 @@
             this.frameBuffers[i].height = h;
             
             // size texture
+            gl.activeTexture(gl["TEXTURE"+this.frameBuffers[i].texUnit]);
             gl.bindTexture(gl.TEXTURE_2D, this.frameBuffers[i].texture);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-            gl.bindTexture(gl.TEXTURE_2D, null);
+            // gl.bindTexture(gl.TEXTURE_2D, null);
 
             // size depth buffer
             gl.bindRenderbuffer(gl.RENDERBUFFER, this.frameBuffers[i].renderBuffer);
             gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
-            gl.bindRenderbuffer(gl.RENDERBUFFER, null);
-            
+            gl.bindRenderbuffer(gl.RENDERBUFFER, null);            
         }
-        
+        this.scene.needsUpdate = true;
     }
         
     function createRenderList(callBackFn){
@@ -480,7 +480,7 @@
         return true;
     }
 
-    function createCustomVertexBuffer(data, attributes){
+    function createCustomBuffer(data, attributes){
         var gl = this.gl;
         this.usingStandardVertexBuffer = false;
 
@@ -492,11 +492,12 @@
         }
 
         // Bind the buffer object to target
-        gl.bindBuffer(gl.ARRAY_BUFFER, newBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+        gl.bindBuffer(data.type || gl.ARRAY_BUFFER, newBuffer);
+        gl.bufferData(data.type || gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
 
         return {
             buffer: newBuffer,
+            type: data.type || gl.ARRAY_BUFFER,
             length: data.length,
             data: data,
             fsize: data.BYTES_PER_ELEMENT,
@@ -504,26 +505,26 @@
         };
     }
 
-    function updateCustomVertexBuffer(bufferObj){
+    function updateCustomBuffer(bufferObj){
         var gl = this.gl;
         this.usingStandardVertexBuffer = false;
         // bind buffer
-        gl.bindBuffer(gl.ARRAY_BUFFER, bufferObj.buffer);
+        gl.bindBuffer(bufferObj.type, bufferObj.buffer);
         // buffer data (maybe should use glBufferSubData instead?);
         if(bufferObj.data.length > bufferObj.length){
             bufferObj.length = bufferObj.data.length;
-            gl.bufferData(gl.ARRAY_BUFFER, bufferObj.data, gl.DYNAMIC_DRAW);
+            gl.bufferData(bufferObj.type, bufferObj.data, gl.DYNAMIC_DRAW);
         } else {
-            gl.bufferSubData(gl.ARRAY_BUFFER, 0, bufferObj.data);
+            gl.bufferSubData(bufferObj.type, 0, bufferObj.data);
         }
     }
 
-    function useCustomVertexBuffer(bufferObj){
+    function useCustomBuffer(bufferObj){
         var gl = this.gl;
         this.usingStandardVertexBuffer = false;
 
         // bind buffer
-        gl.bindBuffer(gl.ARRAY_BUFFER, bufferObj.buffer);
+        gl.bindBuffer(bufferObj.type, bufferObj.buffer);
 
         // setup attributes
         var numAtr = bufferObj.attributes.length;
@@ -679,9 +680,9 @@
     
     Renderer.prototype.getNextTexUnit = getNextTexUnit;
     Renderer.prototype.useStandardVertexBuffer = useStandardVertexBuffer;
-    Renderer.prototype.useCustomVertexBuffer = useCustomVertexBuffer;
-    Renderer.prototype.createCustomVertexBuffer = createCustomVertexBuffer;
-    Renderer.prototype.updateCustomVertexBuffer = updateCustomVertexBuffer;
+    Renderer.prototype.useCustomBuffer = useCustomBuffer;
+    Renderer.prototype.createCustomBuffer = createCustomBuffer;
+    Renderer.prototype.updateCustomBuffer = updateCustomBuffer;
     
     Renderer.prototype.destroy = destroy;
     

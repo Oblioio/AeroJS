@@ -1,7 +1,7 @@
 (function(window) {
 
     'use strict';
-    
+        
     function createRotateX(ang){
         return [
             1,              0,                0,               0,
@@ -12,7 +12,27 @@
     }
     
     function rotateX(matA, ang){
-    	return multiply(matA, createRotateX(ang));
+        var _cos = Math.cos(ang),
+            _sin = Math.sin(ang);
+        
+        return [
+                matA[0], 
+                matA[1], 
+                matA[2],
+                matA[3],                
+                matA[4]*_cos + matA[8]*_sin,
+                matA[5]*_cos + matA[9]*_sin,
+                matA[6]*_cos + matA[10]*_sin,
+                matA[7]*_cos + matA[11]*_sin,                
+                matA[4]*-_sin + matA[8]*_cos,
+                matA[5]*-_sin + matA[9]*_cos,
+                matA[6]*-_sin + matA[10]*_cos,
+                matA[7]*-_sin + matA[11]*_cos,                
+                matA[12],
+                matA[13],
+                matA[14],
+                matA[15]
+            ];        
     }
     
     function createRotateY(ang){
@@ -21,11 +41,64 @@
             0,              1,    0,               0,
             Math.sin(ang),  0,    Math.cos(ang),   0,
             0,              0,    0,               1
+        ];        
+    }
+    
+    function rotateY(matA, ang){        
+        var _cos = Math.cos(ang),
+            _sin = Math.sin(ang);
+        
+        return [
+                matA[0]*_cos + matA[8]*-_sin, 
+                matA[1]*_cos + matA[9]*-_sin,
+                matA[2]*_cos + matA[10]*-_sin,
+                matA[3]*_cos + matA[11]*-_sin,              
+                matA[4],
+                matA[5],
+                matA[6],
+                matA[7],
+                matA[0]*_sin + matA[8]*_cos,            
+                matA[1]*_sin + matA[9]*_cos,
+                matA[2]*_sin + matA[10]*_cos,
+                matA[3]*_sin + matA[11]*_cos,
+                matA[12],
+                matA[13],
+                matA[14],
+                matA[15]
+            ];
+    }
+    
+    function createRotateZ(ang){            
+        return [
+            Math.cos(ang),  Math.sin(ang),  0,  0,
+            -Math.sin(ang), Math.cos(ang),  0,  0,
+            0,              0,              1,  0,
+            0,              0,              0,  1
         ];
     }
     
-    function rotateY(matA, ang){
-    	return multiply(matA, createRotateY(ang));
+    function rotateZ(matA, ang){   
+        var _cos = Math.cos(ang),
+            _sin = Math.sin(ang);
+        
+        return [
+                matA[0]*_cos+matA[4]*_sin, 
+                matA[1]*_cos+matA[5]*_sin,
+                matA[2]*_cos+matA[6]*_sin,
+                matA[3]*_cos+matA[7]*_sin,
+                matA[0]*-_sin+matA[4]*_cos,
+                matA[1]*-_sin+matA[5]*_cos,
+                matA[2]*-_sin+matA[6]*_cos,
+                matA[3]*-_sin+matA[7]*_cos,
+                matA[8],
+                matA[9],
+                matA[10],
+                matA[11],
+                matA[12],
+                matA[13],
+                matA[14],
+                matA[15]
+            ];        
     }
 
     function createScale(scale){
@@ -37,14 +110,14 @@
         ]
     }
 
-    function scale (matA, s) {   
-		var te = clone(matA);
-		te[0] *= s; te[4] *= s; te[8] *= s;
-		te[1] *= s; te[5] *= s; te[9] *= s;
-		te[2] *= s; te[6] *= s; te[10] *= s;
-		te[3] *= s; te[7] *= s; te[11] *= s;
-		return te;
-	}
+    function scale (matA, s) {  
+        return [
+            matA[0]*s, matA[1]*s, matA[2]*s, matA[3]*s,
+            matA[4]*s, matA[5]*s, matA[6]*s, matA[7]*s,
+            matA[8]*s, matA[9]*s, matA[10]*s, matA[11]*s,
+            matA[12], matA[13], matA[14], matA[15]
+        ]
+    }
 
     function createTranslation(xOff, yOff, zOff){
         return [
@@ -55,8 +128,25 @@
         ]
     }
     
-    function translate(matA, xOff, yOff, zOff){
-    	return multiply(matA, createTranslation(xOff, yOff, zOff));
+    function translate(matA, xOff, yOff, zOff){        
+        return [
+                matA[0], 
+                matA[1], 
+                matA[2],
+                matA[3],           
+                matA[4],
+                matA[5],
+                matA[6],
+                matA[7],
+                matA[8],
+                matA[9],
+                matA[10],
+                matA[11],
+                matA[0]*xOff+matA[4]*yOff+matA[8]*zOff+matA[12],
+                matA[1]*xOff+matA[5]*yOff+matA[9]*zOff+matA[13],
+                matA[2]*xOff+matA[6]*yOff+matA[10]*zOff+matA[14],
+                matA[3]*xOff+matA[7]*yOff+matA[11]*zOff+matA[15]
+            ];
     }
 
     function createProjection(near, far, fov, aspect){
@@ -79,31 +169,27 @@
 		te[3] = 0;	te[7] = 0;	te[11] = - 1;	te[15] = 0;
 		
 		return te;
-
 	}    
 
     function multiply (matA, matB){
-        // return [
-        //     matB[0]*matA[0]+matB[3]*matA[1]+matB[6]*matA[2], matB[0]*matA[3]+matB[3]*matA[4]+matB[6]*matA[5], matB[0]*matA[6]+matB[3]*matA[7]+matB[6]*matA[8],
-        //     matB[1]*matA[0]+matB[4]*matA[1]+matB[7]*matA[2], matB[1]*matA[3]+matB[4]*matA[4]+matB[7]*matA[5], matB[1]*matA[6]+matB[4]*matA[7]+matB[7]*matA[8],
-        //     matB[2]*matA[0]+matB[5]*matA[1]+matB[8]*matA[2], matB[2]*matA[3]+matB[5]*matA[4]+matB[8]*matA[5], matB[2]*matA[6]+matB[5]*matA[7]+matB[8]*matA[8]
-        // ]
-
-        var newMat = [],
-        	numcol = 4,
-        	newVal;
-        	
-        for(var c=0; c<numcol; c++){
-            for(var r=0; r<numcol; r++){
-                newVal = 0;
-                for(var m=0; m<numcol; m++){
-                    newVal += matA[r+(m*numcol)]*matB[(c*numcol)+m];
-                }
-                newMat.push(newVal);
-            }
-        }
-
-        return newMat;
+        return [
+                matA[0]*matB[0]+matA[4]*matB[1]+matA[8]*matB[2]+matA[12]*matB[3], 
+                matA[1]*matB[0]+matA[5]*matB[1]+matA[9]*matB[2]+matA[13]*matB[3],
+                matA[2]*matB[0]+matA[6]*matB[1]+matA[10]*matB[2]+matA[14]*matB[3],
+                matA[3]*matB[0]+matA[7]*matB[1]+matA[11]*matB[2]+matA[15]*matB[3],
+                matA[0]*matB[4]+matA[4]*matB[5]+matA[8]*matB[6]+matA[12]*matB[7],
+                matA[1]*matB[4]+matA[5]*matB[5]+matA[9]*matB[6]+matA[13]*matB[7],
+                matA[2]*matB[4]+matA[6]*matB[5]+matA[10]*matB[6]+matA[14]*matB[7],
+                matA[3]*matB[4]+matA[7]*matB[5]+matA[11]*matB[6]+matA[15]*matB[7],
+                matA[0]*matB[8]+matA[4]*matB[9]+matA[8]*matB[10]+matA[12]*matB[11],            
+                matA[1]*matB[8]+matA[5]*matB[9]+matA[9]*matB[10]+matA[13]*matB[11],
+                matA[2]*matB[8]+matA[6]*matB[9]+matA[10]*matB[10]+matA[14]*matB[11],
+                matA[3]*matB[8]+matA[7]*matB[9]+matA[11]*matB[10]+matA[15]*matB[11],
+                matA[0]*matB[12]+matA[4]*matB[13]+matA[8]*matB[14]+matA[12]*matB[15],
+                matA[1]*matB[12]+matA[5]*matB[13]+matA[9]*matB[14]+matA[13]*matB[15],
+                matA[2]*matB[12]+matA[6]*matB[13]+matA[10]*matB[14]+matA[14]*matB[15],
+                matA[3]*matB[12]+matA[7]*matB[13]+matA[11]*matB[14]+matA[15]*matB[15]
+            ];
     }
 
     function transpose(matA){
@@ -116,7 +202,6 @@
     }
 
     function inverse ( matA ) {
-
         // modded from THREE.js
 		// based on http://www.euclideanspace.com/maths/algebra/matrix/functions/inverse/fourD/index.htm
 		var te = [],
@@ -173,8 +258,10 @@
     Aero.Math.Matrix4 = {
     	"createRotateX": createRotateX,
     	"rotateX": rotateX,
-    	"createRotateY": createRotateY,
-    	"rotateY": rotateY,
+        "createRotateY": createRotateY,
+        "rotateY": rotateY,
+        "createRotateZ": createRotateZ,
+        "rotateZ": rotateZ,
     	"createScale": createScale,
     	"scale": scale,
     	"createTranslation": createTranslation,

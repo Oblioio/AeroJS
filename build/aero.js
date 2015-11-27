@@ -187,7 +187,7 @@ Aero.registerJSProgram = function(id, obj){
 (function(window) {
 
     'use strict';
-    
+        
     function createRotateX(ang){
         return [
             1,              0,                0,               0,
@@ -198,7 +198,27 @@ Aero.registerJSProgram = function(id, obj){
     }
     
     function rotateX(matA, ang){
-    	return multiply(matA, createRotateX(ang));
+        var _cos = Math.cos(ang),
+            _sin = Math.sin(ang);
+        
+        return [
+                matA[0], 
+                matA[1], 
+                matA[2],
+                matA[3],                
+                matA[4]*_cos + matA[8]*_sin,
+                matA[5]*_cos + matA[9]*_sin,
+                matA[6]*_cos + matA[10]*_sin,
+                matA[7]*_cos + matA[11]*_sin,                
+                matA[4]*-_sin + matA[8]*_cos,
+                matA[5]*-_sin + matA[9]*_cos,
+                matA[6]*-_sin + matA[10]*_cos,
+                matA[7]*-_sin + matA[11]*_cos,                
+                matA[12],
+                matA[13],
+                matA[14],
+                matA[15]
+            ];        
     }
     
     function createRotateY(ang){
@@ -207,11 +227,64 @@ Aero.registerJSProgram = function(id, obj){
             0,              1,    0,               0,
             Math.sin(ang),  0,    Math.cos(ang),   0,
             0,              0,    0,               1
+        ];        
+    }
+    
+    function rotateY(matA, ang){        
+        var _cos = Math.cos(ang),
+            _sin = Math.sin(ang);
+        
+        return [
+                matA[0]*_cos + matA[8]*-_sin, 
+                matA[1]*_cos + matA[9]*-_sin,
+                matA[2]*_cos + matA[10]*-_sin,
+                matA[3]*_cos + matA[11]*-_sin,              
+                matA[4],
+                matA[5],
+                matA[6],
+                matA[7],
+                matA[0]*_sin + matA[8]*_cos,            
+                matA[1]*_sin + matA[9]*_cos,
+                matA[2]*_sin + matA[10]*_cos,
+                matA[3]*_sin + matA[11]*_cos,
+                matA[12],
+                matA[13],
+                matA[14],
+                matA[15]
+            ];
+    }
+    
+    function createRotateZ(ang){            
+        return [
+            Math.cos(ang),  Math.sin(ang),  0,  0,
+            -Math.sin(ang), Math.cos(ang),  0,  0,
+            0,              0,              1,  0,
+            0,              0,              0,  1
         ];
     }
     
-    function rotateY(matA, ang){
-    	return multiply(matA, createRotateY(ang));
+    function rotateZ(matA, ang){   
+        var _cos = Math.cos(ang),
+            _sin = Math.sin(ang);
+        
+        return [
+                matA[0]*_cos+matA[4]*_sin, 
+                matA[1]*_cos+matA[5]*_sin,
+                matA[2]*_cos+matA[6]*_sin,
+                matA[3]*_cos+matA[7]*_sin,
+                matA[0]*-_sin+matA[4]*_cos,
+                matA[1]*-_sin+matA[5]*_cos,
+                matA[2]*-_sin+matA[6]*_cos,
+                matA[3]*-_sin+matA[7]*_cos,
+                matA[8],
+                matA[9],
+                matA[10],
+                matA[11],
+                matA[12],
+                matA[13],
+                matA[14],
+                matA[15]
+            ];        
     }
 
     function createScale(scale){
@@ -223,14 +296,14 @@ Aero.registerJSProgram = function(id, obj){
         ]
     }
 
-    function scale (matA, s) {   
-		var te = clone(matA);
-		te[0] *= s; te[4] *= s; te[8] *= s;
-		te[1] *= s; te[5] *= s; te[9] *= s;
-		te[2] *= s; te[6] *= s; te[10] *= s;
-		te[3] *= s; te[7] *= s; te[11] *= s;
-		return te;
-	}
+    function scale (matA, s) {  
+        return [
+            matA[0]*s, matA[1]*s, matA[2]*s, matA[3]*s,
+            matA[4]*s, matA[5]*s, matA[6]*s, matA[7]*s,
+            matA[8]*s, matA[9]*s, matA[10]*s, matA[11]*s,
+            matA[12], matA[13], matA[14], matA[15]
+        ]
+    }
 
     function createTranslation(xOff, yOff, zOff){
         return [
@@ -241,8 +314,25 @@ Aero.registerJSProgram = function(id, obj){
         ]
     }
     
-    function translate(matA, xOff, yOff, zOff){
-    	return multiply(matA, createTranslation(xOff, yOff, zOff));
+    function translate(matA, xOff, yOff, zOff){        
+        return [
+                matA[0], 
+                matA[1], 
+                matA[2],
+                matA[3],           
+                matA[4],
+                matA[5],
+                matA[6],
+                matA[7],
+                matA[8],
+                matA[9],
+                matA[10],
+                matA[11],
+                matA[0]*xOff+matA[4]*yOff+matA[8]*zOff+matA[12],
+                matA[1]*xOff+matA[5]*yOff+matA[9]*zOff+matA[13],
+                matA[2]*xOff+matA[6]*yOff+matA[10]*zOff+matA[14],
+                matA[3]*xOff+matA[7]*yOff+matA[11]*zOff+matA[15]
+            ];
     }
 
     function createProjection(near, far, fov, aspect){
@@ -265,31 +355,27 @@ Aero.registerJSProgram = function(id, obj){
 		te[3] = 0;	te[7] = 0;	te[11] = - 1;	te[15] = 0;
 		
 		return te;
-
 	}    
 
     function multiply (matA, matB){
-        // return [
-        //     matB[0]*matA[0]+matB[3]*matA[1]+matB[6]*matA[2], matB[0]*matA[3]+matB[3]*matA[4]+matB[6]*matA[5], matB[0]*matA[6]+matB[3]*matA[7]+matB[6]*matA[8],
-        //     matB[1]*matA[0]+matB[4]*matA[1]+matB[7]*matA[2], matB[1]*matA[3]+matB[4]*matA[4]+matB[7]*matA[5], matB[1]*matA[6]+matB[4]*matA[7]+matB[7]*matA[8],
-        //     matB[2]*matA[0]+matB[5]*matA[1]+matB[8]*matA[2], matB[2]*matA[3]+matB[5]*matA[4]+matB[8]*matA[5], matB[2]*matA[6]+matB[5]*matA[7]+matB[8]*matA[8]
-        // ]
-
-        var newMat = [],
-        	numcol = 4,
-        	newVal;
-        	
-        for(var c=0; c<numcol; c++){
-            for(var r=0; r<numcol; r++){
-                newVal = 0;
-                for(var m=0; m<numcol; m++){
-                    newVal += matA[r+(m*numcol)]*matB[(c*numcol)+m];
-                }
-                newMat.push(newVal);
-            }
-        }
-
-        return newMat;
+        return [
+                matA[0]*matB[0]+matA[4]*matB[1]+matA[8]*matB[2]+matA[12]*matB[3], 
+                matA[1]*matB[0]+matA[5]*matB[1]+matA[9]*matB[2]+matA[13]*matB[3],
+                matA[2]*matB[0]+matA[6]*matB[1]+matA[10]*matB[2]+matA[14]*matB[3],
+                matA[3]*matB[0]+matA[7]*matB[1]+matA[11]*matB[2]+matA[15]*matB[3],
+                matA[0]*matB[4]+matA[4]*matB[5]+matA[8]*matB[6]+matA[12]*matB[7],
+                matA[1]*matB[4]+matA[5]*matB[5]+matA[9]*matB[6]+matA[13]*matB[7],
+                matA[2]*matB[4]+matA[6]*matB[5]+matA[10]*matB[6]+matA[14]*matB[7],
+                matA[3]*matB[4]+matA[7]*matB[5]+matA[11]*matB[6]+matA[15]*matB[7],
+                matA[0]*matB[8]+matA[4]*matB[9]+matA[8]*matB[10]+matA[12]*matB[11],            
+                matA[1]*matB[8]+matA[5]*matB[9]+matA[9]*matB[10]+matA[13]*matB[11],
+                matA[2]*matB[8]+matA[6]*matB[9]+matA[10]*matB[10]+matA[14]*matB[11],
+                matA[3]*matB[8]+matA[7]*matB[9]+matA[11]*matB[10]+matA[15]*matB[11],
+                matA[0]*matB[12]+matA[4]*matB[13]+matA[8]*matB[14]+matA[12]*matB[15],
+                matA[1]*matB[12]+matA[5]*matB[13]+matA[9]*matB[14]+matA[13]*matB[15],
+                matA[2]*matB[12]+matA[6]*matB[13]+matA[10]*matB[14]+matA[14]*matB[15],
+                matA[3]*matB[12]+matA[7]*matB[13]+matA[11]*matB[14]+matA[15]*matB[15]
+            ];
     }
 
     function transpose(matA){
@@ -302,7 +388,6 @@ Aero.registerJSProgram = function(id, obj){
     }
 
     function inverse ( matA ) {
-
         // modded from THREE.js
 		// based on http://www.euclideanspace.com/maths/algebra/matrix/functions/inverse/fourD/index.htm
 		var te = [],
@@ -359,8 +444,10 @@ Aero.registerJSProgram = function(id, obj){
     Aero.Math.Matrix4 = {
     	"createRotateX": createRotateX,
     	"rotateX": rotateX,
-    	"createRotateY": createRotateY,
-    	"rotateY": rotateY,
+        "createRotateY": createRotateY,
+        "rotateY": rotateY,
+        "createRotateZ": createRotateZ,
+        "rotateZ": rotateZ,
     	"createScale": createScale,
     	"scale": scale,
     	"createTranslation": createTranslation,
@@ -903,17 +990,17 @@ UTILITY FUNCTIONS
             this.frameBuffers[i].height = h;
             
             // size texture
+            gl.activeTexture(gl["TEXTURE"+this.frameBuffers[i].texUnit]);
             gl.bindTexture(gl.TEXTURE_2D, this.frameBuffers[i].texture);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-            gl.bindTexture(gl.TEXTURE_2D, null);
+            // gl.bindTexture(gl.TEXTURE_2D, null);
 
             // size depth buffer
             gl.bindRenderbuffer(gl.RENDERBUFFER, this.frameBuffers[i].renderBuffer);
             gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
-            gl.bindRenderbuffer(gl.RENDERBUFFER, null);
-            
+            gl.bindRenderbuffer(gl.RENDERBUFFER, null);            
         }
-        
+        this.scene.needsUpdate = true;
     }
         
     function createRenderList(callBackFn){
@@ -1331,7 +1418,7 @@ UTILITY FUNCTIONS
         return true;
     }
 
-    function createCustomVertexBuffer(data, attributes){
+    function createCustomBuffer(data, attributes){
         var gl = this.gl;
         this.usingStandardVertexBuffer = false;
 
@@ -1343,11 +1430,12 @@ UTILITY FUNCTIONS
         }
 
         // Bind the buffer object to target
-        gl.bindBuffer(gl.ARRAY_BUFFER, newBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+        gl.bindBuffer(data.type || gl.ARRAY_BUFFER, newBuffer);
+        gl.bufferData(data.type || gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
 
         return {
             buffer: newBuffer,
+            type: data.type || gl.ARRAY_BUFFER,
             length: data.length,
             data: data,
             fsize: data.BYTES_PER_ELEMENT,
@@ -1355,26 +1443,26 @@ UTILITY FUNCTIONS
         };
     }
 
-    function updateCustomVertexBuffer(bufferObj){
+    function updateCustomBuffer(bufferObj){
         var gl = this.gl;
         this.usingStandardVertexBuffer = false;
         // bind buffer
-        gl.bindBuffer(gl.ARRAY_BUFFER, bufferObj.buffer);
+        gl.bindBuffer(bufferObj.type, bufferObj.buffer);
         // buffer data (maybe should use glBufferSubData instead?);
         if(bufferObj.data.length > bufferObj.length){
             bufferObj.length = bufferObj.data.length;
-            gl.bufferData(gl.ARRAY_BUFFER, bufferObj.data, gl.DYNAMIC_DRAW);
+            gl.bufferData(bufferObj.type, bufferObj.data, gl.DYNAMIC_DRAW);
         } else {
-            gl.bufferSubData(gl.ARRAY_BUFFER, 0, bufferObj.data);
+            gl.bufferSubData(bufferObj.type, 0, bufferObj.data);
         }
     }
 
-    function useCustomVertexBuffer(bufferObj){
+    function useCustomBuffer(bufferObj){
         var gl = this.gl;
         this.usingStandardVertexBuffer = false;
 
         // bind buffer
-        gl.bindBuffer(gl.ARRAY_BUFFER, bufferObj.buffer);
+        gl.bindBuffer(bufferObj.type, bufferObj.buffer);
 
         // setup attributes
         var numAtr = bufferObj.attributes.length;
@@ -1430,8 +1518,9 @@ UTILITY FUNCTIONS
                     } else {
                         // console.log('bind buffer: '+nodeObj.outputBuffer);
                         gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffers[nodeObj.outputBuffer].frameBuffer);
-                        if(nodeObj.clearBuffer)
+                        if(nodeObj.clearBuffer){
                             gl.clear(gl.COLOR_BUFFER_BIT);
+                        }
                     }
 
                     //attach program
@@ -1529,9 +1618,9 @@ UTILITY FUNCTIONS
     
     Renderer.prototype.getNextTexUnit = getNextTexUnit;
     Renderer.prototype.useStandardVertexBuffer = useStandardVertexBuffer;
-    Renderer.prototype.useCustomVertexBuffer = useCustomVertexBuffer;
-    Renderer.prototype.createCustomVertexBuffer = createCustomVertexBuffer;
-    Renderer.prototype.updateCustomVertexBuffer = updateCustomVertexBuffer;
+    Renderer.prototype.useCustomBuffer = useCustomBuffer;
+    Renderer.prototype.createCustomBuffer = createCustomBuffer;
+    Renderer.prototype.updateCustomBuffer = updateCustomBuffer;
     
     Renderer.prototype.destroy = destroy;
     
@@ -1721,7 +1810,7 @@ UTILITY FUNCTIONS
         for(var i in targetData){
             this.scene.createRenderTarget(
                     i,
-                    targetData[i].nodes
+                    targetData[i].nodes || []
                 );
         }
         if(callBackFn)callBackFn();        
@@ -1766,6 +1855,7 @@ UTILITY FUNCTIONS
         this.arrayExecuter = new Aero.utils.ArrayExecuter(this);
         this.renderer = new Aero.Renderer(this);
         this.io = new Aero.IO(this);
+        this.ready = false;
         
         this.onReady = (parameters && parameters.onReady)?parameters.onReady:null;
         
@@ -1817,6 +1907,7 @@ UTILITY FUNCTIONS
         // call initial render
         if(this.data["settings"]["autoRender"])this.renderer.start();
         
+        this.ready = true;
         if(this.onReady)this.onReady();
     }
     
