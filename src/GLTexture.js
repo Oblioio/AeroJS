@@ -4,8 +4,7 @@
 
     
     var GLTexture = function (_settings, _scene) {
-        var gl = _scene.gl,
-            texture = gl.createTexture();
+        var gl = _scene.gl;
         
         // console.log('GLTexture');
         this.type = "texture";
@@ -13,56 +12,81 @@
         
         this.scene = _scene;
         this.settings = _settings;
-        this.imgURL = (_settings.imgURL)?_settings.imgURL.replace('~/', this.scene.dirPath):null;
+        this.src = (_settings.src)?_settings.src:null;
+        this.cube = (_settings.src && _settings.src.constructor === Array )?true:false;
+        this.type = (this.cube)?gl.TEXTURE_CUBE_MAP:gl.TEXTURE_2D;
         this.texUnit = _settings.texUnit;
+        
         console.log('GLTexture Init: '+this.texUnit);
                     
-        this.texture = texture;
-        gl.activeTexture(gl["TEXTURE"+this.texUnit]);
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        
-        //flip the Y coord
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-        // Set the parameters so we can render any size image.
-        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); //Prevents s-coordinate wrapping (repeating).
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); //Prevents t-coordinate wrapping (repeating).
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        this.texture =  gl.createTexture();        
     }
     
     function loadTexture(callbackFN){
         this.onLoadComplete = (callbackFN)?callbackFN:null;    
         
-        if(!this.imgURL){
+        if(!this.src){
             console.log('loadTexture ERROR: no image url');
             if(this.onLoadComplete)this.onLoadComplete();
             this.onLoadComplete = null;
         }
         
-        console.log('loadTexture: '+this.imgURL);
+        console.log('loadTexture: '+this.src);
         
-        this.imgObj = new Image();
-        
-        this.imgObj.onload = textureLoaded.bind(this);
-        
-        this.imgObj.src = this.imgURL;
+        if(!this.cube){
+            this.imgObj = new Image();        
+            this.imgObj.onload = textureLoaded.bind(this);        
+            this.imgObj.src = this.src.replace('~/', this.scene.dirPath);
+        } else {
+            this.imgObj = [];
+            var sidesLoaded = 0;
+            function sideloaded(){ 
+                sidesLoaded++;
+                if(sidesLoaded == 6)textureLoaded.call(this);
+            };
+            for(var i=0; i<6; i++){
+                var imgObj = new Image();
+                imgObj.onload = sideloaded.bind(this);
+                imgObj.src = this.src[i].replace('~/', this.scene.dirPath);
+                this.imgObj.push(imgObj);
+            }
+        }
     }
     
+    function isPow2( num ){
+        return num !== 0 && (num & (num - 1)) === 0;
+    }
+        
     function textureLoaded(){
         var gl = this.scene.gl,
             texture = this.texture;
         
         gl.activeTexture(gl["TEXTURE"+this.texUnit]);
-        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.bindTexture(this.type, texture );
         
         //save image dimensions
         this.width = this.imgObj.width;
-        this.height = this.imgObj.height;        
+        this.height = this.imgObj.height;     
+                
+        //flip the Y coord
+        // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
         
-        // Upload the image into the texture.
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.imgObj);
+        // Set the parameters so we can render any size image.
+        // gl.texParameteri(this.type, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        // gl.texParameteri(this.type, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(this.type, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); //Prevents s-coordinate wrapping (repeating).
+        gl.texParameteri(this.type, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); //Prevents t-coordinate wrapping (repeating).
+        gl.texParameteri(this.type, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(this.type, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        
+        if(!this.cube){
+            // Upload the image into the texture.
+            gl.texImage2D(this.type, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.imgObj);
+        } else {            
+            for(var i=0; i<6; i++){
+                gl.texImage2D( gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.imgObj[i]);
+            }
+        }
         
         if (this.onLoadComplete){
             this.onLoadComplete();
@@ -77,10 +101,11 @@
             
         gl.deleteTexture(texture);
         
+        this.imgObj = null;
         this.texture = null;
         this.scene = null;
         this.settings = null;
-        this.imgURL = null;
+        this.src = null;
         this.texUnit = null;
     }
         

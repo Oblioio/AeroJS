@@ -246,10 +246,9 @@
     }
     
     function createTexture(textureData){
-        return new Aero.GLTexture({
-            imgURL: textureData,
-            texUnit: this.getNextTexUnit()
-        }, this.scene);
+        textureData = textureData || {};
+        textureData.texUnit = this.getNextTexUnit();
+        return new Aero.GLTexture(textureData, this.scene);
     }
     
     function assignFrameBuffers(callBackFn){
