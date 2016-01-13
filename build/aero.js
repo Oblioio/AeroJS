@@ -812,6 +812,7 @@ UTILITY FUNCTIONS
         this.src = (_settings.src)?_settings.src:null;
         this.cube = (_settings.src && _settings.src.constructor === Array )?true:false;
         this.type = (this.cube)?gl.TEXTURE_CUBE_MAP:gl.TEXTURE_2D;
+        this.srcObj = (typeof this.src == "object")?this.src:null;
         this.texUnit = _settings.texUnit;
         
         console.log('GLTexture Init: '+this.texUnit);
@@ -830,12 +831,14 @@ UTILITY FUNCTIONS
         
         console.log('loadTexture: '+this.src);
         
-        if(!this.cube){
-            this.imgObj = new Image();        
-            this.imgObj.onload = textureLoaded.bind(this);        
-            this.imgObj.src = this.src.replace('~/', this.scene.dirPath);
+        if(this.srcObj){ // was passed an object, not src string
+            textureLoaded.call(this);
+        } else if(!this.cube){
+            this.srcObj = new Image();        
+            this.srcObj.onload = textureLoaded.bind(this);        
+            this.srcObj.src = this.src.replace('~/', this.scene.dirPath);
         } else {
-            this.imgObj = [];
+            this.srcObj = [];
             var sidesLoaded = 0;
             function sideloaded(){ 
                 sidesLoaded++;
@@ -845,7 +848,7 @@ UTILITY FUNCTIONS
                 var imgObj = new Image();
                 imgObj.onload = sideloaded.bind(this);
                 imgObj.src = this.src[i].replace('~/', this.scene.dirPath);
-                this.imgObj.push(imgObj);
+                this.srcObj.push(imgObj);
             }
         }
     }
@@ -862,8 +865,8 @@ UTILITY FUNCTIONS
         gl.bindTexture(this.type, texture );
         
         //save image dimensions
-        this.width = this.imgObj.width;
-        this.height = this.imgObj.height;     
+        this.width = this.srcObj.width;
+        this.height = this.srcObj.height;     
                 
         //flip the Y coord
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -878,10 +881,10 @@ UTILITY FUNCTIONS
         
         if(!this.cube){
             // Upload the image into the texture.
-            gl.texImage2D(this.type, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.imgObj);
+            gl.texImage2D(this.type, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.srcObj);
         } else {            
             for(var i=0; i<6; i++){
-                gl.texImage2D( gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.imgObj[i]);
+                gl.texImage2D( gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.srcObj[i]);
             }
         }
         
@@ -898,7 +901,7 @@ UTILITY FUNCTIONS
             
         gl.deleteTexture(texture);
         
-        this.imgObj = null;
+        this.srcObj = null;
         this.texture = null;
         this.scene = null;
         this.settings = null;
@@ -1007,10 +1010,12 @@ UTILITY FUNCTIONS
             if(nodes[node].resize)nodes[node].resize(w, h);
         }
         var gl = this.gl;
-        
+                
         // need to resize frame buffers
         for(var i=0; i<this.frameBuffers.length; i++){
+            console.log(this.frameBuffers[i].size);
             if(this.frameBuffers[i].size !== "auto")continue; // only resize those that are autosized
+            // console.log('resize buffer '+i);
             this.frameBuffers[i].width = w;
             this.frameBuffers[i].height = h;
             
@@ -1023,7 +1028,7 @@ UTILITY FUNCTIONS
             // size depth buffer
             gl.bindRenderbuffer(gl.RENDERBUFFER, this.frameBuffers[i].renderBuffer);
             gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
-            gl.bindRenderbuffer(gl.RENDERBUFFER, null);            
+            gl.bindRenderbuffer(gl.RENDERBUFFER, null);
         }
         this.scene.needsUpdate = true;
     }
@@ -1235,7 +1240,7 @@ UTILITY FUNCTIONS
         for(var i=0; i<this.scene.renderTargets.length; i++){
             var buffObj = this.scene.renderTargets[i];
             if(buffObj["nodes"].length){
-                currBuffer = this.frameBuffers[i] || getNextFrameBuffer.call(this, 0);
+                currBuffer = this.frameBuffers[i] || getNextFrameBuffer.call(this, 0, this.scene.renderTargets[i]);
                 currBuffer.holdForever = true;
                 for(o=0; o<buffObj["nodes"].length; o++){
                     currNode = this.scene.nodes[buffObj["nodes"][o]];
@@ -1274,7 +1279,7 @@ UTILITY FUNCTIONS
             currNode.outputs = currNode.outputs || {};
             currNode.outputs.texUnit = currBuffer.texUnit;
             
-            // console.log(currNode.id+' draws to frame buffer: '+currBuffer.texUnit);
+            console.log(currNode.id+' draws to frame buffer: '+currBuffer.texUnit);
 
             for(o=0; o<currNode.dependents.length; o++){
                 // getRenderListIndex(this.renderList, connectedNode);
@@ -1282,9 +1287,12 @@ UTILITY FUNCTIONS
                 connectedNode = this.scene.nodes[currNode.dependents[o].id];
                 
                 // if(connectedNode.type == "GLProgram")connectedNode.setUniform(currNode.dependents[o].var, currBuffer.texUnit); //set the texture unit index
-                if(connectedNode.type == "GLProgram")
+                if(connectedNode.type == "GLProgram"){
+                    // console.log('setting '+connectedNode.id+' '+currNode.dependents[o].destVar+' to '+currBuffer.texUnit);
                     connectedNode.inputs[currNode.dependents[o].destVar] = currBuffer.texUnit; //set the texture unit index
-                    
+                }
+                
+                
                 connectedIndex = getRenderListIndex(this.renderList, connectedNode);
                 currBuffer.holdIndex = Math.max(connectedIndex, currBuffer.holdIndex);
                 // console.log('framebuffer connectedIndex: '+connectedIndex);
@@ -1297,57 +1305,66 @@ UTILITY FUNCTIONS
         callBackFn();
     }
 
-    function getNextFrameBuffer(r){
+    function getNextFrameBuffer(r, customSettings){
 
         // check if any current frame buffers are available
         // if one is available return it
-
-        for(var b=0; b<this.frameBuffers.length; b++){
-            // the buffer is available if the current index is greater than the holdIndex
-            if(!this.frameBuffers[b].holdForever && this.frameBuffers[b].holdIndex < r){
-                return this.frameBuffers[b];
+        if(!customSettings){
+            for(var b=0; b<this.frameBuffers.length; b++){
+                // the buffer is available if the current index is greater than the holdIndex
+                if(!this.frameBuffers[b].holdForever && this.frameBuffers[b].holdIndex < r){
+                    return this.frameBuffers[b];
+                }
             }
         }
 
         // if we got here then none were available
         // so we're gonna create a new one
-        var bufferObject = createFrameBuffer.call(this);
+        
+        // var bufferObject = createFrameBuffer.call(this);
 
-        bufferObject.index = this.frameBuffers.length;
-        bufferObject.holdIndex = 0;
+        // bufferObject.index = this.frameBuffers.length;
+        // bufferObject.holdIndex = 0;
 
-        this.frameBuffers.push(bufferObject);
+        // this.frameBuffers.push(bufferObject);
 
-        return bufferObject;
+        // return bufferObject;
+        
+        return createFrameBuffer.call(this, customSettings || {});
     }
 
-    function createFrameBuffer(){
+    function createFrameBuffer(settings){
         var gl = this.gl,
             rttFramebuffer = gl.createFramebuffer(),
             rttTexture = gl.createTexture(),
             renderbuffer = gl.createRenderbuffer(),
-            size = "auto",
-            bufferWidth = this.scene.canvas.width,
-            bufferHeight = this.scene.canvas.height,
+            size = (settings.size)?"custom":"auto",
+            bufferWidth = (settings.size && settings.size.width)?settings.size.width:this.scene.canvas.width,
+            bufferHeight = (settings.size && settings.size.height)?settings.size.height:this.scene.canvas.height,
+            isPowTwo = (
+                        (( bufferWidth & ( bufferWidth - 1 ) ) === 0 && bufferWidth !== 0) && 
+                        (( bufferHeight & ( bufferHeight - 1 ) ) === 0 && bufferHeight !== 0)
+                    ) ? true:false,
+            mipmap = (settings.mipmap && isPowTwo)?settings.mipmap:false,
             texUnit = this.getNextTexUnit();
 
-        console.log('createFrameBuffer: texUnit '+texUnit);
-
+        console.log('createFrameBuffer: texUnit '+texUnit+' size: '+bufferWidth+', '+bufferHeight);        
+        console.log("isPowTwo: "+isPowTwo);
+        
         // frame buffer
         gl.activeTexture(gl["TEXTURE"+texUnit]);
         gl.bindFramebuffer(gl.FRAMEBUFFER, rttFramebuffer);
 
         // texture
         gl.bindTexture(gl.TEXTURE_2D, rttTexture);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); //Prevents s-coordinate wrapping (repeating).
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); //Prevents t-coordinate wrapping (repeating).
-        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
-        // gl.generateMipmap(gl.TEXTURE_2D);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, (mipmap)?gl.LINEAR_MIPMAP_LINEAR:gl.LINEAR);
+        // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, bufferWidth, bufferHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        if(isPowTwo)gl.generateMipmap(gl.TEXTURE_2D);
 
         // depth buffer, not sure we need this actually
         gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
@@ -1362,15 +1379,32 @@ UTILITY FUNCTIONS
         gl.bindRenderbuffer(gl.RENDERBUFFER, null);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        return {
+        // return {
+        //     size: size,
+        //     frameBuffer: rttFramebuffer,
+        //     texture: rttTexture,
+        //     renderBuffer: renderbuffer,
+        //     width: bufferWidth,
+        //     height: bufferHeight,
+        //     texUnit: texUnit
+        // }
+        
+        var bufferObject = {
             size: size,
+            mipmap: mipmap,
             frameBuffer: rttFramebuffer,
             texture: rttTexture,
             renderBuffer: renderbuffer,
             width: bufferWidth,
             height: bufferHeight,
-            texUnit: texUnit
+            texUnit: texUnit,
+            index: this.frameBuffers.length,
+            holdIndex: 0
         }
+        
+        this.frameBuffers.push(bufferObject);
+        
+        return bufferObject;
     }
 
     function getNextTexUnit(){
@@ -1516,8 +1550,10 @@ UTILITY FUNCTIONS
     
     function render(){
         var gl = this.gl,
-            nodeObj,
-            d;
+            nodeObj, bufferObj,
+            d,
+            canvasW = Number(this.scene.canvas.width),
+            canvasH = Number(this.scene.canvas.height);
             
         if(!this.gl)return;
         
@@ -1535,50 +1571,83 @@ UTILITY FUNCTIONS
 
             switch(nodeObj.type){
                 case "GLProgram":
-                    // console.log('program: '+nodeObj.id);
-                    if(nodeObj.drawToCanvas){
-                        // console.log(nodeObj.id+' draw to canvas!');
-                        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-                    } else {
-                        // console.log('bind buffer: '+nodeObj.outputBuffer);
-                        gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffers[nodeObj.outputBuffer].frameBuffer);
-                        if(nodeObj.clearBuffer){
-                            gl.clear(gl.COLOR_BUFFER_BIT);
-                        }
-                    }
-
+                
                     //attach program
                     gl.useProgram(nodeObj.program);
                     gl.program = nodeObj.program;
+                    
 
                     //update vertex attrib
                     if(!this.usingStandardVertexBuffer){
                         this.useStandardVertexBuffer(this);
                     }
 
-
                     //update uniforms
                     nodeObj.updateUniforms();
-
-                    //draw
-                    // gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); // Draw the rectangle
-
-                    nodeObj.render();
-
-                    break;
-                case "JSProgram":;
-                    if(nodeObj.draws){
-                        if(!nodeObj.drawToCanvas){
-                            gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffers[nodeObj.outputBuffer].frameBuffer);
-                            if(nodeObj.clearBuffer)
-                                gl.clear(gl.COLOR_BUFFER_BIT);
-                        } else {
-                            // console.log(nodeObj.id+' draw to canvas!');
-                            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                    
+                    // console.log('program: '+nodeObj.id);
+                    if(nodeObj.drawToCanvas){
+                        // console.log(nodeObj.id+' draw to canvas!');
+                        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                        gl.viewport(0, 0, canvasW, canvasH);
+                        
+                        //draw
+                        nodeObj.render();
+                        
+                    } else {
+                        bufferObj = this.frameBuffers[nodeObj.outputBuffer];
+                        // console.log('bind buffer: '+nodeObj.outputBuffer);
+                        gl.bindFramebuffer(gl.FRAMEBUFFER, bufferObj.frameBuffer);
+                        gl.viewport(0, 0, bufferObj.width, bufferObj.height);
+                        
+                        if(nodeObj.clearBuffer){
+                            gl.clear(gl.COLOR_BUFFER_BIT);
+                        }                        
+                        
+                        //draw
+                        nodeObj.render();
+                        if(bufferObj.mipmap){
+                            gl.activeTexture(gl["TEXTURE"+bufferObj.texUnit]);
+                            // gl.bindTexture(gl.TEXTURE_2D, bufferObj.texture);
+                            gl.generateMipmap(gl.TEXTURE_2D);
                         }
                     }
-                    // run program
-                    nodeObj.run();
+
+
+
+                    break;
+                case "JSProgram":
+                    if(nodeObj.draws){
+                        if(!nodeObj.drawToCanvas){
+                            bufferObj = this.frameBuffers[nodeObj.outputBuffer];
+                            gl.bindFramebuffer(gl.FRAMEBUFFER, bufferObj.frameBuffer);
+                            gl.viewport(0, 0, bufferObj.width, bufferObj.height);
+                            
+                            if(nodeObj.clearBuffer){
+                                gl.clear(gl.COLOR_BUFFER_BIT);
+                            }
+                            
+                            // run program
+                            nodeObj.run();
+                            
+                            if(bufferObj.mipmap){
+                                gl.activeTexture(gl["TEXTURE"+bufferObj.texUnit]);
+                                // gl.bindTexture(gl.TEXTURE_2D, bufferObj.texture);
+                                gl.generateMipmap(gl.TEXTURE_2D);
+                            }
+                            
+                        } else {
+                            
+                            // console.log(nodeObj.id+' draw to canvas!');
+                            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                            gl.viewport(0, 0, canvasW, canvasH);
+                            
+                            // run program
+                            nodeObj.run();
+                        }
+                    } else {
+                        nodeObj.run();
+                    }
 
                     // update dependents
                     d = nodeObj.dependents.length;
@@ -1834,7 +1903,7 @@ UTILITY FUNCTIONS
         for(var i in targetData){
             this.scene.createRenderTarget(
                     i,
-                    targetData[i].nodes || []
+                    targetData[i]
                 );
         }
         if(callBackFn)callBackFn();        
@@ -2013,15 +2082,17 @@ UTILITY FUNCTIONS
         
     }
     
-    function createRenderTarget(id, nodes){
+    function createRenderTarget(id, settings){
         var _nodes = [];
-        for(var i=0; i<nodes.length; i++){
-            if(this.nodes.hasOwnProperty(nodes[i])){
-                _nodes.push(nodes[i]);
+        for(var i=0; i<settings.nodes.length; i++){
+            if(this.nodes.hasOwnProperty(settings.nodes[i])){
+                _nodes.push(settings.nodes[i]);
             }
         }
         this.renderTargets.push({
             "id": id,
+            "size": settings.size || false,
+            "mipmap": settings.mipmap,
             "nodes": _nodes
         })
     }
