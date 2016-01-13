@@ -15,6 +15,7 @@
         this.src = (_settings.src)?_settings.src:null;
         this.cube = (_settings.src && _settings.src.constructor === Array )?true:false;
         this.type = (this.cube)?gl.TEXTURE_CUBE_MAP:gl.TEXTURE_2D;
+        this.srcObj = (typeof this.src == "object")?this.src:null;
         this.texUnit = _settings.texUnit;
         
         console.log('GLTexture Init: '+this.texUnit);
@@ -33,12 +34,14 @@
         
         console.log('loadTexture: '+this.src);
         
-        if(!this.cube){
-            this.imgObj = new Image();        
-            this.imgObj.onload = textureLoaded.bind(this);        
-            this.imgObj.src = this.src.replace('~/', this.scene.dirPath);
+        if(this.srcObj){ // was passed an object, not src string
+            textureLoaded.call(this);
+        } else if(!this.cube){
+            this.srcObj = new Image();        
+            this.srcObj.onload = textureLoaded.bind(this);        
+            this.srcObj.src = this.src.replace('~/', this.scene.dirPath);
         } else {
-            this.imgObj = [];
+            this.srcObj = [];
             var sidesLoaded = 0;
             function sideloaded(){ 
                 sidesLoaded++;
@@ -48,7 +51,7 @@
                 var imgObj = new Image();
                 imgObj.onload = sideloaded.bind(this);
                 imgObj.src = this.src[i].replace('~/', this.scene.dirPath);
-                this.imgObj.push(imgObj);
+                this.srcObj.push(imgObj);
             }
         }
     }
@@ -65,11 +68,11 @@
         gl.bindTexture(this.type, texture );
         
         //save image dimensions
-        this.width = this.imgObj.width;
-        this.height = this.imgObj.height;     
+        this.width = this.srcObj.width;
+        this.height = this.srcObj.height;     
                 
         //flip the Y coord
-        // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
         
         // Set the parameters so we can render any size image.
         // gl.texParameteri(this.type, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -81,10 +84,10 @@
         
         if(!this.cube){
             // Upload the image into the texture.
-            gl.texImage2D(this.type, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.imgObj);
+            gl.texImage2D(this.type, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.srcObj);
         } else {            
             for(var i=0; i<6; i++){
-                gl.texImage2D( gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.imgObj[i]);
+                gl.texImage2D( gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.srcObj[i]);
             }
         }
         
@@ -101,7 +104,7 @@
             
         gl.deleteTexture(texture);
         
-        this.imgObj = null;
+        this.srcObj = null;
         this.texture = null;
         this.scene = null;
         this.settings = null;

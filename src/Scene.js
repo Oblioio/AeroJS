@@ -150,15 +150,17 @@
         
     }
     
-    function createRenderTarget(id, nodes){
+    function createRenderTarget(id, settings){
         var _nodes = [];
-        for(var i=0; i<nodes.length; i++){
-            if(this.nodes.hasOwnProperty(nodes[i])){
-                _nodes.push(nodes[i]);
+        for(var i=0; i<settings.nodes.length; i++){
+            if(this.nodes.hasOwnProperty(settings.nodes[i])){
+                _nodes.push(settings.nodes[i]);
             }
         }
         this.renderTargets.push({
             "id": id,
+            "size": settings.size || false,
+            "mipmap": settings.mipmap,
             "nodes": _nodes
         })
     }

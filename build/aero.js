@@ -204,7 +204,7 @@ Aero.registerJSProgram = function(id, obj){
         return [
                 matA[0], 
                 matA[1], 
-                matA[2],
+                matA[2], 
                 matA[3],                
                 matA[4]*_cos + matA[8]*_sin,
                 matA[5]*_cos + matA[9]*_sin,
@@ -866,7 +866,7 @@ UTILITY FUNCTIONS
         this.height = this.imgObj.height;     
                 
         //flip the Y coord
-        // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
         
         // Set the parameters so we can render any size image.
         // gl.texParameteri(this.type, gl.TEXTURE_MIN_FILTER, gl.NEAREST);

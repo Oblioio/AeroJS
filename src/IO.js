@@ -178,7 +178,7 @@
         for(var i in targetData){
             this.scene.createRenderTarget(
                     i,
-                    targetData[i].nodes || []
+                    targetData[i]
                 );
         }
         if(callBackFn)callBackFn();        

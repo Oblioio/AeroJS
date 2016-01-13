@@ -18,7 +18,7 @@
         return [
                 matA[0], 
                 matA[1], 
-                matA[2],
+                matA[2], 
                 matA[3],                
                 matA[4]*_cos + matA[8]*_sin,
                 matA[5]*_cos + matA[9]*_sin,
