@@ -89,7 +89,7 @@
         this.nodes[id] = texObj;
         texObj.id = id;
         
-        texObj.loadTexture(callbackFn);
+        texObj.load(callbackFn);
     }
         
     function deleteTexture(id){
@@ -151,10 +151,11 @@
     }
     
     function createRenderTarget(id, settings){
-        var _nodes = [];
-        for(var i=0; i<settings.nodes.length; i++){
-            if(this.nodes.hasOwnProperty(settings.nodes[i])){
-                _nodes.push(settings.nodes[i]);
+        var sNodes = settings.nodes || [],
+            _nodes = [];
+        for(var i=0; i<sNodes.length; i++){
+            if(this.nodes.hasOwnProperty(sNodes[i])){
+                _nodes.push(sNodes[i]);
             }
         }
         this.renderTargets.push({

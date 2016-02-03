@@ -377,7 +377,7 @@ Aero.registerJSProgram = function(id, obj){
                 matA[3]*matB[12]+matA[7]*matB[13]+matA[11]*matB[14]+matA[15]*matB[15]
             ];
     }
-
+    
     function transpose(matA){
         return [
             matA[0], matA[4], matA[8], matA[12],
@@ -457,6 +457,60 @@ Aero.registerJSProgram = function(id, obj){
     	"transpose": transpose,
     	"inverse": inverse,
     	"clone": clone
+    };
+
+
+}(window));
+
+(function(window) {
+
+    'use strict';
+
+
+    // function calculateFaceNormal(ptA, ptB, ptC){
+    //     // give me 3 points... i'll calculate the normal
+    //     var vecA = vec_sub(ptC, ptB),
+    //         vecB = vec_sub(ptA, ptB),
+    //         cross = vec_cross(vecA, vecB);
+
+    //     // return normalized cross product
+    //     return vec_divide(cross, vec_length(cross));
+    // }
+
+    // function vec_sub(vecA, vecB){
+    //     return [vecA[0]-vecB[0], vecA[1]-vecB[1], vecA[2]-vecB[2]];
+    // }
+
+    // function vec_cross(vecA, vecB){
+    //     return [
+    //                 vecA[1]*vecB[2] - vecA[2]*vecB[1],
+    //                 vecA[2]*vecB[0] - vecA[0]*vecB[2],
+    //                 vecA[0]*vecB[1] - vecA[1]*vecB[0]
+    //             ];
+    // }
+
+    // function vec_divide(vecA, scalar){
+    //     return [vecA[0]/scalar, vecA[1]/scalar, vecA[2]/scalar];
+    // }
+
+    // function vec_length(vecA){
+    //     return Math.sqrt( vecA[0] * vecA[0] + vecA[1] * vecA[1] + vecA[2] * vecA[2] );
+    // }
+    
+    
+    function multiplyMat4(vec, mat){
+        var w = mat[3] * vec[0] + mat[7] * vec[1] + mat[11] * vec[2] + mat[15];
+        w = w || 1.0;
+        
+        return [ (mat[0] * vec[0] + mat[4] * vec[1] + mat[8] * vec[2] + mat[12]) / w,
+            (mat[1] * vec[0] + mat[5] * vec[1] + mat[9] * vec[2] + mat[13]) / w,
+            (mat[2] * vec[0] + mat[6] * vec[1] + mat[10] * vec[2] + mat[14]) / w ];
+    }
+    
+    // add section to Aero namespace
+    Aero.Math = Aero.Math || {};
+    Aero.Math.Vector3 = {
+    	multiplyMat4: multiplyMat4
     };
 
 
@@ -803,12 +857,20 @@ UTILITY FUNCTIONS
     var GLTexture = function (_settings, _scene) {
         var gl = _scene.gl;
         
+        this.settings = {
+            flipY: true,
+            src: null
+        }
+        
         // console.log('GLTexture');
         this.type = "texture";
         this.inRenderList = false;
         
         this.scene = _scene;
-        this.settings = _settings;
+        
+        // add passed in settings
+        for(var _set in _settings) this.settings[_set] = _settings[_set];
+        
         this.src = (_settings.src)?_settings.src:null;
         this.cube = (_settings.src && _settings.src.constructor === Array )?true:false;
         this.type = (this.cube)?gl.TEXTURE_CUBE_MAP:gl.TEXTURE_2D;
@@ -820,29 +882,25 @@ UTILITY FUNCTIONS
         this.texture =  gl.createTexture();        
     }
     
-    function loadTexture(callbackFN){
-        this.onLoadComplete = (callbackFN)?callbackFN:null;    
-        
+    function load(callbackFn){ 
+        console.log(this);    
         if(!this.src){
             console.log('loadTexture ERROR: no image url');
-            if(this.onLoadComplete)this.onLoadComplete();
-            this.onLoadComplete = null;
+            if(callbackFn)callbackFn();
         }
         
-        console.log('loadTexture: '+this.src);
+        // console.log('loadTexture: '+this.src);
+        var completeFn = function(){
+            // this.update(callbackFn);
+            update.call(this, callbackFn);
+        }.bind(this);
         
-        if(this.srcObj){ // was passed an object, not src string
-            textureLoaded.call(this);
-        } else if(!this.cube){
-            this.srcObj = new Image();        
-            this.srcObj.onload = textureLoaded.bind(this);        
-            this.srcObj.src = this.src.replace('~/', this.scene.dirPath);
-        } else {
+        if(this.cube){
             this.srcObj = [];
             var sidesLoaded = 0;
             function sideloaded(){ 
                 sidesLoaded++;
-                if(sidesLoaded == 6)textureLoaded.call(this);
+                if(sidesLoaded == 6)completeFn();
             };
             for(var i=0; i<6; i++){
                 var imgObj = new Image();
@@ -850,6 +908,12 @@ UTILITY FUNCTIONS
                 imgObj.src = this.src[i].replace('~/', this.scene.dirPath);
                 this.srcObj.push(imgObj);
             }
+        } else if(this.srcObj){ // was passed an object, not src string
+            completeFn();
+        } else {
+            this.srcObj = new Image();        
+            this.srcObj.onload = completeFn;
+            this.srcObj.src = this.src.replace('~/', this.scene.dirPath);
         }
     }
     
@@ -857,7 +921,7 @@ UTILITY FUNCTIONS
         return num !== 0 && (num & (num - 1)) === 0;
     }
         
-    function textureLoaded(){
+    function update(callbackFn){
         var gl = this.scene.gl,
             texture = this.texture;
         
@@ -869,7 +933,7 @@ UTILITY FUNCTIONS
         this.height = this.srcObj.height;     
                 
         //flip the Y coord
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.settings.flipY);
         
         // Set the parameters so we can render any size image.
         // gl.texParameteri(this.type, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -888,10 +952,7 @@ UTILITY FUNCTIONS
             }
         }
         
-        if (this.onLoadComplete){
-            this.onLoadComplete();
-            this.onLoadComplete = null;
-        }
+        if (callbackFn)callbackFn();
     }
     
     function destroy(){
@@ -909,7 +970,8 @@ UTILITY FUNCTIONS
         this.texUnit = null;
     }
         
-    GLTexture.prototype.loadTexture = loadTexture;
+    GLTexture.prototype.load = load;
+    GLTexture.prototype.update = update;
     GLTexture.prototype.destroy = destroy;
     
     // add section to Aero namespace
@@ -2021,7 +2083,7 @@ UTILITY FUNCTIONS
         this.nodes[id] = texObj;
         texObj.id = id;
         
-        texObj.loadTexture(callbackFn);
+        texObj.load(callbackFn);
     }
         
     function deleteTexture(id){
@@ -2083,10 +2145,11 @@ UTILITY FUNCTIONS
     }
     
     function createRenderTarget(id, settings){
-        var _nodes = [];
-        for(var i=0; i<settings.nodes.length; i++){
-            if(this.nodes.hasOwnProperty(settings.nodes[i])){
-                _nodes.push(settings.nodes[i]);
+        var sNodes = settings.nodes || [],
+            _nodes = [];
+        for(var i=0; i<sNodes.length; i++){
+            if(this.nodes.hasOwnProperty(sNodes[i])){
+                _nodes.push(sNodes[i]);
             }
         }
         this.renderTargets.push({

@@ -3,6 +3,7 @@
     "src/utils/ArrayExecuter.js",
     "src/utils/XHRLoader.js",
     "src/math/Matrix4.js",
+    "src/math/Vector3.js",
     "src/GLProgram.js",
     "src/GLTexture.js",
     "src/GLUploaders.js",

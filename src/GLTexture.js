@@ -6,12 +6,20 @@
     var GLTexture = function (_settings, _scene) {
         var gl = _scene.gl;
         
+        this.settings = {
+            flipY: true,
+            src: null
+        }
+        
         // console.log('GLTexture');
         this.type = "texture";
         this.inRenderList = false;
         
         this.scene = _scene;
-        this.settings = _settings;
+        
+        // add passed in settings
+        for(var _set in _settings) this.settings[_set] = _settings[_set];
+        
         this.src = (_settings.src)?_settings.src:null;
         this.cube = (_settings.src && _settings.src.constructor === Array )?true:false;
         this.type = (this.cube)?gl.TEXTURE_CUBE_MAP:gl.TEXTURE_2D;
@@ -23,29 +31,25 @@
         this.texture =  gl.createTexture();        
     }
     
-    function loadTexture(callbackFN){
-        this.onLoadComplete = (callbackFN)?callbackFN:null;    
-        
+    function load(callbackFn){ 
+        console.log(this);    
         if(!this.src){
             console.log('loadTexture ERROR: no image url');
-            if(this.onLoadComplete)this.onLoadComplete();
-            this.onLoadComplete = null;
+            if(callbackFn)callbackFn();
         }
         
-        console.log('loadTexture: '+this.src);
+        // console.log('loadTexture: '+this.src);
+        var completeFn = function(){
+            // this.update(callbackFn);
+            update.call(this, callbackFn);
+        }.bind(this);
         
-        if(this.srcObj){ // was passed an object, not src string
-            textureLoaded.call(this);
-        } else if(!this.cube){
-            this.srcObj = new Image();        
-            this.srcObj.onload = textureLoaded.bind(this);        
-            this.srcObj.src = this.src.replace('~/', this.scene.dirPath);
-        } else {
+        if(this.cube){
             this.srcObj = [];
             var sidesLoaded = 0;
             function sideloaded(){ 
                 sidesLoaded++;
-                if(sidesLoaded == 6)textureLoaded.call(this);
+                if(sidesLoaded == 6)completeFn();
             };
             for(var i=0; i<6; i++){
                 var imgObj = new Image();
@@ -53,6 +57,12 @@
                 imgObj.src = this.src[i].replace('~/', this.scene.dirPath);
                 this.srcObj.push(imgObj);
             }
+        } else if(this.srcObj){ // was passed an object, not src string
+            completeFn();
+        } else {
+            this.srcObj = new Image();        
+            this.srcObj.onload = completeFn;
+            this.srcObj.src = this.src.replace('~/', this.scene.dirPath);
         }
     }
     
@@ -60,7 +70,7 @@
         return num !== 0 && (num & (num - 1)) === 0;
     }
         
-    function textureLoaded(){
+    function update(callbackFn){
         var gl = this.scene.gl,
             texture = this.texture;
         
@@ -72,7 +82,7 @@
         this.height = this.srcObj.height;     
                 
         //flip the Y coord
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.settings.flipY);
         
         // Set the parameters so we can render any size image.
         // gl.texParameteri(this.type, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -91,10 +101,7 @@
             }
         }
         
-        if (this.onLoadComplete){
-            this.onLoadComplete();
-            this.onLoadComplete = null;
-        }
+        if (callbackFn)callbackFn();
     }
     
     function destroy(){
@@ -112,7 +119,8 @@
         this.texUnit = null;
     }
         
-    GLTexture.prototype.loadTexture = loadTexture;
+    GLTexture.prototype.load = load;
+    GLTexture.prototype.update = update;
     GLTexture.prototype.destroy = destroy;
     
     // add section to Aero namespace

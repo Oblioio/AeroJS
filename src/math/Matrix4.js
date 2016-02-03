@@ -191,7 +191,7 @@
                 matA[3]*matB[12]+matA[7]*matB[13]+matA[11]*matB[14]+matA[15]*matB[15]
             ];
     }
-
+    
     function transpose(matA){
         return [
             matA[0], matA[4], matA[8], matA[12],
