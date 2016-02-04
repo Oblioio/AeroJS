@@ -160,30 +160,30 @@
                 case "1f":
                     u_fn = Aero.GLUploaders.uniform1f;
                     if(!u_val)u_val = 0;
+                    break;                    
+                case "1fv":
+                    u_fn = Aero.GLUploaders.uniform1fv;
                     break;
-                // case "1fv":
-                //     u_fn = Aero.GLUploaders.uniform1fv;
-                //     break;
-                // case "1i":
-                //     u_fn = Aero.GLUploaders.uniform1i;
-                //     break;
-                // case "1iv":
-                //     u_fn = Aero.GLUploaders.uniform1iv;
-                //     break;
+                case "1i":
+                    u_fn = Aero.GLUploaders.uniform1i;
+                    break;
+                case "1iv":
+                    u_fn = Aero.GLUploaders.uniform1iv;
+                    break;
 
                 case "2f":
                     u_fn = Aero.GLUploaders.uniform2f;
                     if(!u_val)u_val = [0,0];
+                    break;                    
+                case "2fv":
+                    u_fn = Aero.GLUploaders.uniform2fv;
                     break;
-                // case "2fv":
-                //     u_fn = Aero.GLUploaders.uniform2fv;
-                //     break;
-                // case "2i":
-                //     u_fn = Aero.GLUploaders.uniform2i;
-                //     break;
-                // case "2iv":
-                //     u_fn = Aero.GLUploaders.uniform2iv;
-                //     break;
+                case "2i":
+                    u_fn = Aero.GLUploaders.uniform2i;
+                    break;
+                case "2iv":
+                    u_fn = Aero.GLUploaders.uniform2iv;
+                    break;
 
                 case "3f":
                     u_fn = Aero.GLUploaders.uniform3f;
