@@ -163,12 +163,15 @@
                     break;                    
                 case "1fv":
                     u_fn = Aero.GLUploaders.uniform1fv;
+                    if(!u_val)u_val = 0;
                     break;
                 case "1i":
                     u_fn = Aero.GLUploaders.uniform1i;
+                    if(!u_val)u_val = 0;
                     break;
                 case "1iv":
                     u_fn = Aero.GLUploaders.uniform1iv;
+                    if(!u_val)u_val = 0;
                     break;
 
                 case "2f":
@@ -177,12 +180,15 @@
                     break;                    
                 case "2fv":
                     u_fn = Aero.GLUploaders.uniform2fv;
+                    if(!u_val)u_val = [0,0];
                     break;
                 case "2i":
                     u_fn = Aero.GLUploaders.uniform2i;
+                    if(!u_val)u_val = [0,0];
                     break;
                 case "2iv":
                     u_fn = Aero.GLUploaders.uniform2iv;
+                    if(!u_val)u_val = [0,0];
                     break;
 
                 case "3f":
@@ -212,6 +218,7 @@
                     
                 case "t":
                     u_fn = Aero.GLUploaders.uniform1i;
+                    if(!u_val)u_val = 0;
                     break;
 
                 default:
