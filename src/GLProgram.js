@@ -152,7 +152,8 @@
         for(var u in uniformSettings){
             uniObj = uniformSettings[u];
             u_loc = gl.getUniformLocation(this.program, u);
-            // console.log('u_loc: '+u+' | '+u_loc);
+            if(!u_loc)continue; // uniform isn't in shader or isn't being used by shader
+            
             u_val = uniObj.val || null;
 
             switch(uniObj.type){
