@@ -44,13 +44,15 @@
             update.call(this, callbackFn);
         }.bind(this);
         
+        var sidesLoaded = 0;
+        function sideloaded(){ 
+            sidesLoaded++;
+            if(sidesLoaded == 6)completeFn();
+        };
+        
         if(this.cube){
             this.srcObj = [];
-            var sidesLoaded = 0;
-            function sideloaded(){ 
-                sidesLoaded++;
-                if(sidesLoaded == 6)completeFn();
-            };
+            
             for(var i=0; i<6; i++){
                 var imgObj = new Image();
                 imgObj.onload = sideloaded.bind(this);
