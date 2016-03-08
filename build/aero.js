@@ -881,7 +881,7 @@ UTILITY FUNCTIONS
         
         this.src = (_settings.src)?_settings.src:null;
         this.cube = (_settings.src && _settings.src.constructor === Array )?true:false;
-        this.type = (this.cube)?gl.TEXTURE_CUBE_MAP:gl.TEXTURE_2D;
+        this.tex_type = (this.cube)?gl.TEXTURE_CUBE_MAP:gl.TEXTURE_2D;
         this.srcObj = (typeof this.src == "object")?this.src:null;
         this.texUnit = _settings.texUnit;
         
@@ -936,7 +936,7 @@ UTILITY FUNCTIONS
             texture = this.texture;
         
         gl.activeTexture(gl["TEXTURE"+this.texUnit]);
-        gl.bindTexture(this.type, texture );
+        gl.bindTexture(this.tex_type, texture );
         
         //save image dimensions
         this.width = this.srcObj.width;
@@ -946,16 +946,16 @@ UTILITY FUNCTIONS
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.settings.flipY);
         
         // Set the parameters so we can render any size image.
-        // gl.texParameteri(this.type, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        // gl.texParameteri(this.type, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(this.type, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); //Prevents s-coordinate wrapping (repeating).
-        gl.texParameteri(this.type, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); //Prevents t-coordinate wrapping (repeating).
-        gl.texParameteri(this.type, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(this.type, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        // gl.texParameteri(this.tex_type, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        // gl.texParameteri(this.tex_type, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(this.tex_type, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); //Prevents s-coordinate wrapping (repeating).
+        gl.texParameteri(this.tex_type, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); //Prevents t-coordinate wrapping (repeating).
+        gl.texParameteri(this.tex_type, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(this.tex_type, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         
         if(!this.cube){
             // Upload the image into the texture.
-            gl.texImage2D(this.type, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.srcObj);
+            gl.texImage2D(this.tex_type, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.srcObj);
         } else {            
             for(var i=0; i<6; i++){
                 gl.texImage2D( gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.srcObj[i]);
@@ -1197,9 +1197,10 @@ UTILITY FUNCTIONS
 
             // connections where the current node is the source
             sourceConnections = this.scene.connectionSearch('source', currConnection['source']['id']);
-
+                            
             // console.log('source connections');
             for(s=0; s<sourceConnections.length; s++){
+                console.log('sourceConnection', sourceConnections[s]);
 
                 connectedNode = getConnectedNode.call(this, sourceConnections[s], 'dest');
                 if(!connectedNode)continue;
@@ -1215,7 +1216,7 @@ UTILITY FUNCTIONS
                     });
                 }
                 if(currNode.type == "JSProgram"){
-                    console.log('add output to JSProgram');
+                    // console.log('add output to JSProgram');
                     currNode.dependents.push({
                         obj: connectedNode,
                         id: connectedNode.id,

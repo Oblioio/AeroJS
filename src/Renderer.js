@@ -133,9 +133,10 @@
 
             // connections where the current node is the source
             sourceConnections = this.scene.connectionSearch('source', currConnection['source']['id']);
-
+                            
             // console.log('source connections');
             for(s=0; s<sourceConnections.length; s++){
+                console.log('sourceConnection', sourceConnections[s]);
 
                 connectedNode = getConnectedNode.call(this, sourceConnections[s], 'dest');
                 if(!connectedNode)continue;
@@ -151,7 +152,7 @@
                     });
                 }
                 if(currNode.type == "JSProgram"){
-                    console.log('add output to JSProgram');
+                    // console.log('add output to JSProgram');
                     currNode.dependents.push({
                         obj: connectedNode,
                         id: connectedNode.id,
