@@ -23,7 +23,7 @@
         this.src = (_settings.src)?_settings.src:null;
         this.cube = (_settings.src && _settings.src.constructor === Array )?true:false;
         this.tex_type = (this.cube)?gl.TEXTURE_CUBE_MAP:gl.TEXTURE_2D;
-        this.srcObj = (typeof this.src == "object")?this.src:null;
+        this.srcObj = null;
         this.texUnit = _settings.texUnit;
         
         console.log('GLTexture Init: '+this.texUnit);
@@ -61,6 +61,48 @@
             }
         } else if(this.srcObj){ // was passed an object, not src string
             completeFn();
+        } else {
+            this.srcObj = new Image();        
+            this.srcObj.onload = completeFn;
+            this.srcObj.src = this.src.replace('~/', this.scene.dirPath);
+        }
+    }
+
+    function load(callbackFn){ 
+        console.log(this);    
+        if(!this.src){
+            console.log('loadTexture ERROR: no image url');
+            if(callbackFn)callbackFn();
+        }
+        
+        // console.log('loadTexture: '+this.src);
+        var completeFn = function(){
+            // this.update(callbackFn);
+            update.call(this, callbackFn);
+        }.bind(this);
+        
+        var sidesLoaded = 0;
+        function sideloaded(){ 
+            sidesLoaded++;
+            if(sidesLoaded == 6)completeFn();
+        };
+
+        if(this.cube){
+            this.srcObj = [];
+            
+            for(var i=0; i<6; i++){
+                var imgObj = new Image();
+                imgObj.onload = sideloaded.bind(this);
+                imgObj.src = this.src[i].replace('~/', this.scene.dirPath);
+                this.srcObj.push(imgObj);
+            }
+        } else if (typeof this.src == "object") {
+            this.srcObj = this.src;
+            this.src = '';
+            completeFn();
+        } else if (this.srcObj) {
+            this.srcObj.onload = completeFn;
+            this.srcObj.src = this.src.replace('~/', this.scene.dirPath);
         } else {
             this.srcObj = new Image();        
             this.srcObj.onload = completeFn;
