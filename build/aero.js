@@ -908,43 +908,6 @@ UTILITY FUNCTIONS
             sidesLoaded++;
             if(sidesLoaded == 6)completeFn();
         };
-        
-        if(this.cube){
-            this.srcObj = [];
-            
-            for(var i=0; i<6; i++){
-                var imgObj = new Image();
-                imgObj.onload = sideloaded.bind(this);
-                imgObj.src = this.src[i].replace('~/', this.scene.dirPath);
-                this.srcObj.push(imgObj);
-            }
-        } else if(this.srcObj){ // was passed an object, not src string
-            completeFn();
-        } else {
-            this.srcObj = new Image();        
-            this.srcObj.onload = completeFn;
-            this.srcObj.src = this.src.replace('~/', this.scene.dirPath);
-        }
-    }
-
-    function load(callbackFn){ 
-        console.log(this);    
-        if(!this.src){
-            console.log('loadTexture ERROR: no image url');
-            if(callbackFn)callbackFn();
-        }
-        
-        // console.log('loadTexture: '+this.src);
-        var completeFn = function(){
-            // this.update(callbackFn);
-            update.call(this, callbackFn);
-        }.bind(this);
-        
-        var sidesLoaded = 0;
-        function sideloaded(){ 
-            sidesLoaded++;
-            if(sidesLoaded == 6)completeFn();
-        };
 
         if(this.cube){
             this.srcObj = [];
