@@ -23,7 +23,7 @@
         this.src = (_settings.src)?_settings.src:null;
         this.cube = (_settings.src && _settings.src.constructor === Array )?true:false;
         this.tex_type = (this.cube)?gl.TEXTURE_CUBE_MAP:gl.TEXTURE_2D;
-        this.srcObj = (typeof this.src == "object")?this.src:null;
+        this.srcObj = null;
         this.texUnit = _settings.texUnit;
         
         console.log('GLTexture Init: '+this.texUnit);
@@ -49,7 +49,7 @@
             sidesLoaded++;
             if(sidesLoaded == 6)completeFn();
         };
-        
+
         if(this.cube){
             this.srcObj = [];
             
@@ -59,8 +59,13 @@
                 imgObj.src = this.src[i].replace('~/', this.scene.dirPath);
                 this.srcObj.push(imgObj);
             }
-        } else if(this.srcObj){ // was passed an object, not src string
+        } else if (typeof this.src == "object") {
+            this.srcObj = this.src;
+            this.src = '';
             completeFn();
+        } else if (this.srcObj) {
+            this.srcObj.onload = completeFn;
+            this.srcObj.src = this.src.replace('~/', this.scene.dirPath);
         } else {
             this.srcObj = new Image();        
             this.srcObj.onload = completeFn;
