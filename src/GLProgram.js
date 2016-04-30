@@ -18,6 +18,7 @@
         this.settings = {
                 defines: [],
                 constants: {},
+                clearBuffer: true,
                 renderMode: "TRIANGLE_STRIP"
             };
         
@@ -25,7 +26,7 @@
         for(var _set in _settings) this.settings[_set] = _settings[_set];
 
         this.drawToCanvas = false;
-        this.clearBuffer = (String(_settings.clearBuffer).toLowerCase() == "true")?true:false;
+        this.clearBuffer = (String(this.settings.clearBuffer).toLowerCase() == "true")?true:false;
         
         //shaders
         this.vShader = {
